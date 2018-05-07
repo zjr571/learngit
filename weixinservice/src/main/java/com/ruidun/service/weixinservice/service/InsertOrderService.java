@@ -13,7 +13,7 @@ public class InsertOrderService {
     @Autowired
     ChargingMapper chargingMapper;
 
-    public InsertOrderModel insertorder(String openId,String packag,long payment,String paytime,int status,String porepayId,String deviceId,int slotIndex) {
-        return chargingMapper.insertorder(openId,packag,payment,paytime,status,porepayId,deviceId,slotIndex);
+    public InsertOrderModel insertorder(String openId,String packag,long payment,String paytime,int status,String porepayId,String deviceId,int slotIndex,String out_trade_no) {
+        return chargingMapper.insertorder(openId,packag,payment,paytime,status,porepayId,deviceId,slotIndex,out_trade_no);
     }
 }

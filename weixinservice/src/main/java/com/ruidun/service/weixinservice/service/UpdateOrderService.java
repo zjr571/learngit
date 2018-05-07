@@ -13,7 +13,7 @@ public class UpdateOrderService {
     @Autowired
     ChargingMapper chargingMapper;
 
-    public UpdateOrderModel updateOrderModel(String openId) {
-        return chargingMapper.updateorder(openId);
+    public UpdateOrderModel updateOrderModel(String out_trade_no) {
+        return chargingMapper.updateorder(out_trade_no);
     }
 }

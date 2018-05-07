@@ -14,7 +14,7 @@ public class SelectOrderService {
     ChargingMapper chargingMapper;
 
 
-    public SelectOrderModel selectOrderModel(String prepayId) {
-        return chargingMapper.selectorder(prepayId);
+    public SelectOrderModel selectOrderModel(String out_trade_no) {
+        return chargingMapper.selectorder(out_trade_no);
     }
 }

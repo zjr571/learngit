@@ -9,6 +9,16 @@ public class ChargingContentJsonResult {
     private  double lng;
     private Object content = null;
 
+    public double getDistance() {
+        return distance;
+    }
+
+    public void setDistance(double distance) {
+        this.distance = distance;
+    }
+
+    private double distance;
+
     public Object getContent() {
         return content;
     }

@@ -8,6 +8,16 @@ public class SlotChargingContentJsonResult {
     private  String locationDetail=null;
     private double lat;
     private double lng;
+    private double distance;
+
+    public double getDistance() {
+        return distance;
+    }
+
+    public void setDistance(double distance) {
+        this.distance = distance;
+    }
+
     private Object content;
 
     public Object getContent() {

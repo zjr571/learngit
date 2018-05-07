@@ -11,7 +11,7 @@ public class OrderIdUtil {
         String base = "0123456789";
         Random random = new Random();
         StringBuffer sb = new StringBuffer();
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 4; i++) {
             int number = random.nextInt(base.length());
             sb.append(base.charAt(number));
         }

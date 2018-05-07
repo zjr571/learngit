@@ -3,6 +3,12 @@ package com.ruidun.service.weixinservice.model;
 public class SelectOrderModel {
     private String openId;
     private String packag;
+    private String prepayId;
+    private String deviceId;
+    private long payment;
+    private String paytime;
+    private int status;
+    private int slotIndex;
 
     public String getOpenId() {
         return openId;
@@ -43,9 +49,7 @@ public class SelectOrderModel {
     public void setStatus(int status) {
         this.status = status;
     }
-    private long payment;
-    private String paytime;
-    private int status;
+
 
     public String getPrepayId() {
         return prepayId;
@@ -55,8 +59,6 @@ public class SelectOrderModel {
         this.prepayId = prepayId;
     }
 
-    private String prepayId;
-    private String deviceId;
 
     public String getDeviceId() {
         return deviceId;
@@ -74,5 +76,5 @@ public class SelectOrderModel {
         this.slotIndex = slotIndex;
     }
 
-    private int slotIndex;
+
 }

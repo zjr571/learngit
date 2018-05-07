@@ -68,19 +68,17 @@ public class PayUtils {
         parameters.put("mch_id", configDict.get("mch_id"));
         parameters.put("nonce_str", WXPayUtils.createNoncestr(32));
         parameters.put("notify_url", notifyUrl);
+        parameters.put("openid",openid);
         parameters.put("out_trade_no", tradeNo);
         parameters.put("spbill_create_ip", localIp());
-        parameters.put("trade_type", "NATIVE");
-        parameters.put("trade_type", "JSAPI");
-        parameters.put("openid",openid);
         parameters.put("total_fee", String.valueOf(totalFee));
+        parameters.put("trade_type", "JSAPI");
         String sign = WXPayUtils.createSign("UTF-8", parameters, configDict.get("app_key"));
         LOGGER.info("sign==={}",sign);
         parameters.put("sign", sign);
         String requestXML = WXPayUtils.getRequestXml(parameters);
         LOGGER.info("requestXML==={}",requestXML);
         String responseXml = WXPayUtils.httpsRequest("https://api.mch.weixin.qq.com/pay/unifiedorder", "POST", requestXML);
-        LOGGER.info("responseXml==={}",responseXml);
         Map<String,Object> params = null;
         try {
             params = XMLParser.getMapFromXML(responseXml);
@@ -102,9 +100,10 @@ public class PayUtils {
         }
         long time = System.currentTimeMillis();
         String nowTimeStamp = String.valueOf(time / 1000);
-        params.put("sign", sign);
-        params.put("signType", "MD5");
         params.put("timeStamp", nowTimeStamp);
+        String signagain="appId="+params.get("appid")+"&nonceStr="+params.get("nonce_str")+"&package=prepay_id="+params.get("prepay_id")+"&signType=MD5&timeStamp="+params.get("timeStamp")+"&key="+"518eb9368cc423fce6160463ed157a0e";
+        String result = MD5Util.MD5Encode(signagain).toUpperCase();
+        params.put("sign",result);
         return params;
 
 //        // APP

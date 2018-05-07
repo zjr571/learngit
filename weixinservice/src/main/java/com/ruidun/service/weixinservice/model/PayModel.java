@@ -1,10 +1,19 @@
 package com.ruidun.service.weixinservice.model;
 
 public class PayModel {
+    private String accesstoken;
     private String deviceId;
     private int slotIndex;
     private long payment;
     private String openId;
+
+    public String getAccesstoken() {
+        return accesstoken;
+    }
+
+    public void setAccesstoken(String accesstoken) {
+        this.accesstoken = accesstoken;
+    }
 
     public String getDeviceId() {
         return deviceId;

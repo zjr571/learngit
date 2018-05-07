@@ -83,10 +83,7 @@ public class ChargingController {
                     }
                 }
                     NearChargingModel nearChargingModel = nearChargingModelList.get(j);
-                   double[] gps = GPSUtil.gps84_To_Gcj02(nearChargingBodyModel.getLat(),nearChargingBodyModel.getLng());
-                    Double distance =  DistanceUtil.getDistance(gps[0],gps[1],nearChargingModel.getLat(),nearChargingModel.getLng());
-                    BigDecimal b = new BigDecimal(distance);
-                    distance = b.setScale(3,BigDecimal.ROUND_HALF_UP).doubleValue();
+                    double distance=getdistance(nearChargingBodyModel.getLat(),nearChargingBodyModel.getLng(),nearChargingModel.getLat(),nearChargingModel.getLng());
                     nearChargingModel.setDistance(distance);
                     nearChargingModel.setUsedCount(usedCount);
                     nearChargingModel.setAvailableCount(availableCount);
@@ -136,6 +133,7 @@ public class ChargingController {
             String locationDetail = null;
             double lat = 0;
             double lng = 0;
+            double distance = 0;
             List<ChargingModel> chargingModelList = chargingService.selectCharging(chargingBodyModel.getLocationId());
             List<ChargingContentModel> chargingContentModels = chargingContentService.selectCharging(chargingBodyModel.getLocationId());
             for (int i = 0;i< chargingModelList.size();i++){
@@ -147,6 +145,9 @@ public class ChargingController {
                      locationDetail = chargingModel.getLocationDetail();
                      lat = chargingModel.getLat();
                      lng = chargingModel.getLng();
+                    distance=getdistance(chargingBodyModel.getLat(),chargingBodyModel.getLng(),lat,lng);
+
+
                 }
             }
 
@@ -158,6 +159,7 @@ public class ChargingController {
             chargingContentJsonResult.setLocationDetail(locationDetail);
             chargingContentJsonResult.setLat(lat);
             chargingContentJsonResult.setLng(lng);
+            chargingContentJsonResult.setDistance(distance);
             chargingContentJsonResult.setContent(chargingContentModels);
             chargingJsonResult.setData(chargingContentJsonResult);
 
@@ -178,10 +180,7 @@ public class ChargingController {
         try {
             List<CollectionChargingModel> collectionChargingModelList = collectionChargingService.selectcollectionCharging(chargingCollectionBodyModel.getUserId());
             for (CollectionChargingModel collectionChargingModel:collectionChargingModelList){
-                double[] gps = GPSUtil.gps84_To_Gcj02(chargingCollectionBodyModel.getLat(),chargingCollectionBodyModel.getLng());
-                Double distance=  DistanceUtil.getDistance(gps[0],gps[1],collectionChargingModel.getLat(),collectionChargingModel.getLng());
-                BigDecimal b = new BigDecimal(distance);
-                distance = b.setScale(3,   BigDecimal.ROUND_HALF_UP).doubleValue();
+                double distance=getdistance(chargingCollectionBodyModel.getLat(),chargingCollectionBodyModel.getLng(),collectionChargingModel.getLat(),collectionChargingModel.getLng());
                 collectionChargingModel.setDistance(distance);
             }
             Collections.sort(collectionChargingModelList, new Comparator<CollectionChargingModel>() {
@@ -219,6 +218,8 @@ public class ChargingController {
             List<SlotChargingModel> slotChargingModelList = slotChargingService.selectslotCharging(slotChargingBodyModel.getDeviceId());
             List<LocationModel> locationModelList = locationService.selectlocation(slotChargingBodyModel.getDeviceId());
             LocationModel locationModel=locationModelList.get(0);
+            double distance=getdistance(slotChargingBodyModel.getLat(),slotChargingBodyModel.getLng(),locationModel.getLat(),locationModel.getLng());
+
             slotChargingJsonResult.setStatus(0);
             slotChargingJsonResult.setMsg("请求成功");
             slotChargingContentJsonResult.setDeviceId(slotChargingBodyModel.getDeviceId());
@@ -226,6 +227,7 @@ public class ChargingController {
             slotChargingContentJsonResult.setLocationDetail(locationModel.getLocationDetail());
             slotChargingContentJsonResult.setLat(locationModel.getLat());
             slotChargingContentJsonResult.setLng(locationModel.getLng());
+            slotChargingContentJsonResult.setDistance(distance);
             slotChargingContentJsonResult.setContent(slotChargingModelList);
             slotChargingJsonResult.setData(slotChargingContentJsonResult);
         } catch (Exception e) {
@@ -288,10 +290,8 @@ public class ChargingController {
                     j--;
                 }else {
                     SearchWordChargingModel searchWordChargingModel=searchWordChargingModelList.get(j);
-                    double[] gps = GPSUtil.gps84_To_Gcj02(searchWordChargingBodyModel.getLat(),searchWordChargingBodyModel.getLng());
-                    Double distance =  DistanceUtil.getDistance(gps[0],gps[1],searchWordChargingModel.getLat(),searchWordChargingModel.getLng());
-                    BigDecimal b = new BigDecimal(distance);
-                    distance = b.setScale(3,   BigDecimal.ROUND_HALF_UP).doubleValue();
+                    double distance=getdistance(searchWordChargingBodyModel.getLat(),searchWordChargingBodyModel.getLng(),searchWordChargingModel.getLat(),searchWordChargingModel.getLng());
+
                     searchWordChargingModel.setDistance(distance);
                     searchWordChargingModel.setUsedCount(usedCount);
                     searchWordChargingModel.setAvailableCount(availableCount);
@@ -333,6 +333,7 @@ public class ChargingController {
         MyChargingJsonResult myChargingJsonResult = new MyChargingJsonResult();
         try {
            MyChargingModel myChargingModel = mychargingService.selectmycharging(myChargingBodyModel.getUserId());
+            logger.info("Failed to get mycharging. Error = {}",myChargingModel.getTime());
            long l = getSeconds(myChargingModel.getTime());
            long l2 = getSeconds(myChargingModel.getChargingTime());
            double progress = (double) l2/(l+l2)*100;
@@ -396,32 +397,32 @@ public class ChargingController {
     @RequestMapping(value = "/config", method = { RequestMethod.POST})
     public void getConfig(HttpServletRequest request, HttpServletResponse response, @RequestBody UrlModel userurl) {
         try {
-        response.setCharacterEncoding("UTF-8");
-        String appId = "wx01af434429e29725";
-        // 获取页面路径(前端获取时采用location.href.split('#')[0]获取url)
-        String url = userurl.getUrl();
-        // 获取ticket
-        Map map=  AccessTokenUtil.getInstance().getAccessTokenAndJsapiTicket();
-        // 获取Unix时间戳(java时间戳为13位,所以要截取最后3位,保留前10位)
-        String timeStamp = Long.toString(System.currentTimeMillis() / 1000);
-        String noncestr = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-        // 注意这里参数名必须全部小写，且必须有序
-        String sign = "jsapi_ticket=" +  map.get("jsapiticket") + "&noncestr=" + noncestr + "&timestamp=" + timeStamp + "&url=" + url;
-        logger.info("Report status. {}",url);
-        SHA1 sha1=new SHA1();
-        String signature =sha1.getSHA1(sign);
-        // 组装完毕，回传
-        Map<String, Object> ret = new HashMap<String, Object>();
-        ret.put("appId", appId);
-        ret.put("timestamp", timeStamp);
-        ret.put("nonceStr", noncestr);
-        ret.put("signature", signature);
+            response.setCharacterEncoding("UTF-8");
+            String appId = "wx01af434429e29725";
+            // 获取页面路径(前端获取时采用location.href.split('#')[0]获取url)
+            String url = userurl.getUrl();
+            // 获取ticket
+            Map map = AccessTokenUtil.getInstance().getAccessTokenAndJsapiTicket();
+            // 获取Unix时间戳(java时间戳为13位,所以要截取最后3位,保留前10位)
+            String timeStamp = Long.toString(System.currentTimeMillis() / 1000);
+            String noncestr = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+            // 注意这里参数名必须全部小写，且必须有序
+            String sign = "jsapi_ticket=" + map.get("jsapiticket") + "&noncestr=" + noncestr + "&timestamp=" + timeStamp + "&url=" + url;
+            logger.info("Report status. {}", url);
+            SHA1 sha1 = new SHA1();
+            String signature = sha1.getSHA1(sign);
+            // 组装完毕，回传
+            Map<String, Object> ret = new HashMap<String, Object>();
+            ret.put("appId", appId);
+            ret.put("timestamp", timeStamp);
+            ret.put("nonceStr", noncestr);
+            ret.put("signature", signature);
 
-        JSONObject json=JSONObject.fromObject(ret);
-        PrintWriter out = response.getWriter();
-        out.print(json);
-        out.flush();
-        out.close();
+            JSONObject json = JSONObject.fromObject(ret);
+            PrintWriter out = response.getWriter();
+            out.print(json);
+            out.flush();
+            out.close();
         } catch (Exception e) {
             logger.error("Failed to get config. Error = {}", e.getMessage());
 
@@ -513,14 +514,9 @@ public class ChargingController {
             throws ServletException, IOException {
         MyCentreJsonResult myCentreJsonResult = new MyCentreJsonResult();
         try {
-            String result = HttpClient.get("https://api.weixin.qq.com/sns/oauth2/access_token?appid=wx01af434429e29725&secret=5e517cc30f12e4ffe8b4a2a183fe88e7&code="+getMyModel.getCode()+"&grant_type=authorization_code");
-            logger.info("result Report status. {}",result);
-            JSONObject jsonObject = JSONObject.fromObject(result);
-            String openid = jsonObject.get("openid").toString();
-            logger.info("openid Report status. {}",openid);
             Map map=  AccessTokenUtil.getInstance().getAccessTokenAndJsapiTicket();
             logger.info("accesstoken  Report status. {}",map.get("access_token"));
-            String infoJson = HttpClient.get("https://api.weixin.qq.com/cgi-bin/user/info?access_token="+map.get("access_token")+"&openid="+openid+"&lang=zh_CN");
+            String infoJson = HttpClient.get("https://api.weixin.qq.com/cgi-bin/user/info?access_token="+map.get("access_token")+"&openid="+getMyModel.getOpenId()+"&lang=zh_CN");
             logger.info("fanJson Report status. {}",infoJson);
             JSONObject jsonObject1 = JSONObject.fromObject(infoJson);
             MyCentreModel myCentreModel=new MyCentreModel();
@@ -555,4 +551,11 @@ public class ChargingController {
         return seconds;
     }
 
+    private double getdistance(double bodylat,double bodylng,double lat,double lng){
+        double[] gps = GPSUtil.gps84_To_Gcj02(bodylat,bodylng);
+        Double distance =  DistanceUtil.getDistance(gps[0],gps[1],lat,lng);
+        BigDecimal b = new BigDecimal(distance);
+        distance = b.setScale(3,BigDecimal.ROUND_HALF_UP).doubleValue();
+        return distance;
+    }
 }

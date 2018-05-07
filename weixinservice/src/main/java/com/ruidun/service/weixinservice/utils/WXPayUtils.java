@@ -52,6 +52,7 @@ public class WXPayUtils {
             }
         }
         sb.append("key=" + weixinKey);//ThirdPartyConfig.WX_KEY
+        LOGGER.info("finalUrl Report status.============== {}",sb);
         String sign = MD5Util.MD5Encode(sb.toString()).toUpperCase();
         return sign;
     }
@@ -80,7 +81,7 @@ public class WXPayUtils {
 
     public static String getRequestXml(SortedMap<Object,Object> parameters){
         StringBuffer sb = new StringBuffer();
-        sb.append("<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><xml>");
+        sb.append("<xml>");
         Set es = parameters.entrySet();
         Iterator it = es.iterator();
         while(it.hasNext()) {
@@ -89,11 +90,13 @@ public class WXPayUtils {
             String v = (String)entry.getValue();
             if ("attach".equalsIgnoreCase(k)) {
                 sb.append("<"+k+">"+"<![CDATA["+v+"]]></"+k+">");
-            }else {
+            }else if (!"sign".equalsIgnoreCase(k)){
                 sb.append("<"+k+">"+v+"</"+k+">");
             }
         }
+        sb.append("<sign>"+parameters.get("sign")+"</sign>");
         sb.append("</xml>");
+        LOGGER.info("sbsbsbsbsbsbs========{}",sb);
         return sb.toString();
     }
 
