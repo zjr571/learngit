@@ -59,7 +59,7 @@ public class ChargingController {
     public ResponseEntity<JsonResult> getnearcharging (@RequestBody NearChargingBodyModel nearChargingBodyModel){
         JsonResult jsonResult = new JsonResult();
         NearChargingJsonResult nearChargingJsonResult = new NearChargingJsonResult();
-           final int n;
+        final int n;
         try {
             List<NearChargingModel> nearChargingModelList = nearChargingService.selectNearChargingInfo();
             List<MarkModel> markModelList=chargingMarkService.selectMark();

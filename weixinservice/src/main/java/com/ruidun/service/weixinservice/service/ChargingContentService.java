@@ -2,6 +2,7 @@ package com.ruidun.service.weixinservice.service;
 
 import com.ruidun.service.weixinservice.mapper.ChargingMapper;
 import com.ruidun.service.weixinservice.model.ChargingContentModel;
+import com.ruidun.service.weixinservice.model.ChargingInfoModel;
 import com.ruidun.service.weixinservice.model.ChargingModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,5 +16,9 @@ public class ChargingContentService {
     public List<ChargingContentModel> selectCharging(String mark) {
 
         return chargingMapper.getchargingcontent(mark);
+    }
+
+    public ChargingInfoModel getpaylocation(String deviceId){
+        return  chargingMapper.getpaylocation(deviceId);
     }
 }

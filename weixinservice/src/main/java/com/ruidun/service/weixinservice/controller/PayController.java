@@ -1,11 +1,8 @@
 package com.ruidun.service.weixinservice.controller;
 
 import com.ruidun.service.weixinservice.model.*;
-import com.ruidun.service.weixinservice.service.InsertOrderService;
-import com.ruidun.service.weixinservice.service.SelectOrderService;
-import com.ruidun.service.weixinservice.service.UpdateOrderService;
+import com.ruidun.service.weixinservice.service.*;
 import  com.ruidun.service.weixinservice.utils.XMLParser;
-import com.ruidun.service.weixinservice.service.PayChargingService;
 import com.ruidun.service.weixinservice.utils.*;
 import javafx.beans.binding.ObjectExpression;
 import net.sf.json.JSONObject;
@@ -41,6 +38,10 @@ public class PayController {
     private UpdateOrderService updateOrderService;
     @Autowired
     private SelectOrderService selectOrderService;
+    @Autowired
+    private ChargingContentService chargingContentService;
+    @Autowired
+    private SumUsedCountService sumUsedCountService;
 
     @RequestMapping(value = "/createOrder", method = {RequestMethod.POST})
     public Map<String, Object> createOrder(HttpServletRequest request, HttpServletResponse response, @RequestBody PayModel payModel) {
@@ -98,83 +99,103 @@ public class PayController {
 
         if (!params.get("result_code").toString().equalsIgnoreCase("SUCCESS")) {
             logger.warn(String.format("RechargeWechatNotify error! 微信API返回错误信息：%s", params.get("result_msg").toString()));
+            updateOrderService.updateOrderModel(1,params.get("out_trade_no").toString());
             return XMLParser.setXML("FAILED", "");
         }
         Map<String, String> payConfigDict = PayUtils.getWeixinPara();
         if (!WXPayUtils.checkIsSignValidFromResponse(params, payConfigDict.get("app_key"))) {
             logger.warn("RechargeWechatNotify error! 微信API返回的数据签名验证不通过，有可能被第三方篡改!!!KEY="
                     + payConfigDict.get("app_key"));
+            updateOrderService.updateOrderModel(1,params.get("out_trade_no").toString());
             return XMLParser.setXML("FAILED", "");
         }
+
         try {
-            logger.info("Pay detail:{}", params.toString());
-            logger.info("================================支付成功{}", params.get("out_trade_no").toString());
-//            // 设置订单状态为支付成功
-            updateOrderService.updateOrderModel(params.get("out_trade_no").toString());
-            SelectOrderModel selectOrderModel = selectOrderService.selectOrderModel(params.get("out_trade_no").toString());
-            Map<String, Object> resultMap=new HashMap<>();
-            resultMap.put("accessToken","518eb9368cc423fce6160463ed157a0e");
-            resultMap.put("commandType",3);
-            resultMap.put("status","0");
-            resultMap.put("deviceId",selectOrderModel.getDeviceId());
-            resultMap.put("msg","START_SLOT");
-            resultMap.put("seq",1000);
-            Map<String, Object> paraMap=new HashMap<>();
-            paraMap.put("slotId",selectOrderModel.getSlotIndex());
-            paraMap.put("serviceSeconds",10);
-            paraMap.put("currentMa",100);
-            resultMap.put("data", paraMap);
-            JSONObject paraJson = JSONObject.fromObject(resultMap);
-            logger.info("requeatparams=={}",paraJson.toString());
-            logger.info("getDeviceId=={}",selectOrderModel.getDeviceId());
-            for (int i=0;i<5;i++){
-                String jsonvalues = HttpClient.doPost("http://47.104.144.249:19002",paraJson.toString());
-                logger.debug("Device Gateway return = {}", jsonvalues);
-                JSONObject json = JSONObject.fromObject(jsonvalues);
-                JSONObject innerJson = json.getJSONObject("data");
-                int status = innerJson.getInt("deviceReturnCode");
-                if (status == 0){
-                    break;
-                }
-            }
+                    logger.info("Pay detail:{}", params.toString());
+                    logger.info("================================支付成功{}", params.get("out_trade_no").toString());
+                    // 设置订单状态为支付成功
+                    updateOrderService.updateOrderModel(0,params.get("out_trade_no").toString());
+                    SelectOrderModel selectOrderModel = selectOrderService.selectOrderModel(params.get("out_trade_no").toString());
+                    ChargingInfoModel chargingInfoModel=chargingContentService.getpaylocation(selectOrderModel.getDeviceId());
+                    SumPaymentModel sumPaymentModel=sumUsedCountService.sumPaymentModel(selectOrderModel.getOpenId());
+                    Map<String, Object> templateMap=new HashMap<>();
+                    templateMap.put("touser",selectOrderModel.getOpenId());
+                    templateMap.put("template_id","uutDFqv6tZbb4mG2UQ9eyjkOYhlWRcw_N3awzzfUkTM");
+                    templateMap.put("url","http://www.baidu.com");
+                    Map<String, Object> dataMap=new HashMap<>();
+                    Map<String, Object> firstMap=new HashMap<>();
+                    Map<String, Object> keyword1Map=new HashMap<>();
+                    Map<String, Object> keyword2Map=new HashMap<>();
+                    Map<String, Object> keyword3Map=new HashMap<>();
+                    Map<String, Object> keyword4Map=new HashMap<>();
+                    Map<String, Object> keyword5Map=new HashMap<>();
+                    Map<String, Object> remarkMap=new HashMap<>();
+                    firstMap.put("value","充电开始提醒");
+                    firstMap.put("color","#173177");
+                    dataMap.put("first",firstMap);
+                    keyword1Map.put("value",selectOrderModel.getDeviceId());
+                    keyword1Map.put("color","#173177");
+                    dataMap.put("keyword1",keyword1Map);
+                    keyword2Map.put("value",chargingInfoModel.getLocation());
+                    keyword2Map.put("color","#173177");
+                    dataMap.put("keyword2",keyword2Map);
+                    keyword3Map.put("value",selectOrderModel.getPayment()*4+"小时");
+                    keyword3Map.put("color","#173177");
+                    dataMap.put("keyword3",keyword3Map);
+                    keyword4Map.put("value",sumPaymentModel.getPayment()*4+"小时");
+                    keyword4Map.put("color","#173177");
+                    dataMap.put("keyword4",keyword4Map);
+                    Date day=new Date();
+                    SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    keyword5Map.put("value",df.format(day));
+                    keyword5Map.put("color","#173177");
+                    dataMap.put("keyword5",keyword5Map);
+                    remarkMap.put("value","感谢您使用【小太阳】充电桩！");
+                    remarkMap.put("color","#173177");
+                    dataMap.put("remark",remarkMap);
+                    templateMap.put("data",dataMap);
+                    JSONObject templateJson = JSONObject.fromObject(templateMap);
+                    Map map=  AccessTokenUtil.getInstance().getAccessTokenAndJsapiTicket();
+                    String templatejsonvalues = HttpClient.doPost("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token="+map.get("access_token"),templateJson.toString());
+                    JSONObject resulttemplatejson = JSONObject.fromObject(templatejsonvalues);
+                    if (resulttemplatejson.getInt("errcode")==0){
+                        logger.info("template=={}","创建模板成功!!!");
+                    }else {
+                        logger.error("error template=={}",resulttemplatejson.getString("errmsg"));
+                    }
         } catch (Exception e) {
             logger.warn(String.format("Failed to set order status, e = %s", e.getMessage()));
-            return XMLParser.setXML("FAILED", "");
+           e.printStackTrace();
         }
         return XMLParser.setXML("SUCCESS", "OK");
+//        Map<String, Object> resultMap=new HashMap<>();
+//        resultMap.put("accessToken","518eb9368cc423fce6160463ed157a0e");
+//        resultMap.put("commandType",3);
+//        resultMap.put("status","0");
+//        resultMap.put("deviceId",selectOrderModel.getDeviceId());
+//        resultMap.put("msg","START_SLOT");
+//        resultMap.put("seq",1000);
+//        Map<String, Object> paraMap=new HashMap<>();
+//        paraMap.put("slotId",selectOrderModel.getSlotIndex());
+//        paraMap.put("serviceSeconds",10);
+//        paraMap.put("currentMa",100);
+//        resultMap.put("data", paraMap);
+//        JSONObject paraJson = JSONObject.fromObject(resultMap);
+//        logger.info("requeatparams=={}",paraJson.toString());
+//        logger.info("getDeviceId=={}",selectOrderModel.getDeviceId());
+//        for (int i=0;i<5;i++){
+//            String jsonvalues = HttpClient.doPost("http://47.104.144.249:19002",paraJson.toString());
+//            logger.debug("Device Gateway return = {}", jsonvalues);
+//            JSONObject json = JSONObject.fromObject(jsonvalues);
+//            JSONObject innerJson = json.getJSONObject("data");
+//            int status = innerJson.getInt("deviceReturnCode");
+//            if (status == 0){
+//                break;
+//            }
+//        }
+
     }
 
-    @RequestMapping(value = "/testStartSlot", method = { RequestMethod.GET})
-    public void getOpenIdAndRedirect(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        String deviceId = request.getParameter("deviceId");
-        String slotId = request.getParameter("slotId");
-        RequestBobyModel requestBobyModel = new RequestBobyModel();
-        Map<String, Object> resultMap=new HashMap<>();
-        resultMap.put("accessToken","518eb9368cc423fce6160463ed157a0e");
-        resultMap.put("commandType",3);
-        resultMap.put("status","0");
-        resultMap.put("deviceId",deviceId);
-        resultMap.put("msg","START_SLOT");
-        resultMap.put("seq",1000);
-        Map<String, Object> paraMap=new HashMap<>();
-        paraMap.put("slotId",slotId);
-        paraMap.put("serviceSeconds",10);
-        paraMap.put("currentMa",100);
-        resultMap.put("data", paraMap);
-        JSONObject paraJson = JSONObject.fromObject(resultMap);
-        logger.info("requeatparams=={}",paraJson.toString());
-        for (int i=0;i<5;i++){
-            String jsonvalues = HttpClient.doPost("http://47.104.144.249:19002",paraJson.toString());
-            logger.debug("Device Gateway return = {}", jsonvalues);
-            JSONObject json=JSONObject.fromObject(jsonvalues);
-            JSONObject datajson=json.getJSONObject("data");
-            int deviceReturnCode=datajson.getInt("deviceReturnCode");
-            if (deviceReturnCode==0){
-                break;
-            }
-        }
-    }
     /**
      * 给前端查询订单状态使用
      *
@@ -199,6 +220,9 @@ public class PayController {
             return result;
         }
         }
+
+
+
     }
 
 

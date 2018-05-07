@@ -19,8 +19,14 @@ public interface ChargingMapper {
     @Select("SELECT SUM(charging_state.availableCount) FROM charging_state WHERE charging_state.locationId=#{locationId}")
     SumAvailableCountModel getsumavailablecount(int locatinId);
 
+    @Select("SELECT SUM(charging_order.payment) AS payment FROM charging_order WHERE charging_order.openId=#{openId} AND charging_order.status=0")
+    SumPaymentModel getsumPaymentcount(String openId);
+
     @Select("SELECT charging_info.locationId,charging_info.location,charging_info.locationDetail,charging_info.lat,charging_info.lng,charging_state.usedCount,charging_state.availableCount FROM charging_info,charging_state WHERE charging_info.deviceId=charging_state.deviceId")
     List<NearChargingModel> getnearcharging();
+
+    @Select("SELECT charging_info.location FROM charging_info WHERE charging_info.deviceId=#{deviceId}")
+    ChargingInfoModel getpaylocation(String deviceId);
 
     @Select("SELECT  charging_info.chargerIndex,charging_info.lat,charging_info.lng,charging_info.locationId,charging_info.deviceId,charging_info.location,charging_info.locationDetail,charging_state.usedCount,charging_state.availableCount FROM charging_info,charging_state WHERE charging_info.deviceId=charging_state.deviceId AND charging_info.locationId=#{locationId}")
     List<ChargingModel> getcharging(String locationId);
@@ -55,9 +61,11 @@ public interface ChargingMapper {
     @Select("INSERT into charging_order (openId,package,payment,paytime,status,prepayId,deviceId,slotIndex,out_trade_no) values (#{openId},#{package},#{payment},#{paytime},#{status},#{prepayId},#{deviceId},#{slotIndex},#{out_trade_no})")
     InsertOrderModel insertorder(@Param("openId") String openId,@Param("package") String packag,@Param("payment") long payment,@Param("paytime") String paytime,@Param("status") int status,@Param("prepayId") String prepayId,@Param("deviceId") String deviceId,@Param("slotIndex") int slotIndex,@Param("out_trade_no") String out_trade_no);
 
-    @Select("UPDATE charging_order SET status = 0 WHERE out_trade_no = #{out_trade_no}")
-    UpdateOrderModel updateorder (@Param("out_trade_no") String out_trade_no);
+    @Select("UPDATE charging_order SET status = #{status} WHERE out_trade_no = #{out_trade_no}")
+    UpdateOrderModel updateorder (@Param("status") int status,@Param("out_trade_no") String out_trade_no);
 
-    @Select("SELECT charging_order.status,charging_order.deviceId,charging_order.slotIndex,charging_order.payment,charging_order.paytime FROM charging_order WHERE charging_order.out_trade_no=#{out_trade_no}")
+    @Select("SELECT charging_order.openId,charging_order.status,charging_order.deviceId,charging_order.slotIndex,charging_order.payment,charging_order.paytime FROM charging_order WHERE charging_order.out_trade_no=#{out_trade_no}")
     SelectOrderModel selectorder(String out_trade_no);
+
+
 }
