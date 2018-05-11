@@ -18,6 +18,7 @@ import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -101,6 +102,31 @@ public class ChargingController {
         return ResponseEntity.ok(jsonResult);
     }
 
+    @RequestMapping(value ="/getCity",method = { RequestMethod.POST})
+    public ResponseEntity<CityJsonResult> getCharging (@RequestBody CityBodyModel cityBodyModel){
+        CityJsonResult cityJsonResult = new CityJsonResult();
+        try {
+            List<CityModel>cityModelList = chargingService.getCity();
+            if (cityModelList.size()==0){
+                cityJsonResult.setStatus(1);
+                cityJsonResult.setMsg("数据为空");
+
+                cityJsonResult.setData(cityModelList);
+            }else {
+                cityJsonResult.setStatus(0);
+                cityJsonResult.setMsg("请求成功");
+                cityJsonResult.setData(cityModelList);
+            }
+
+        }catch (Exception o){
+            logger.error("Failed to get nearchargers. Error = {}", o.getMessage());
+            cityJsonResult.setMsg("Failed to get getCity");
+            cityJsonResult.setStatus(1);
+            o.printStackTrace();
+        }
+        return ResponseEntity.ok(cityJsonResult);
+    }
+
 
     @RequestMapping(value ="/getcharging",method = { RequestMethod.POST})
     public ResponseEntity<ChargingJsonResult> getCharging (@RequestBody ChargingBodyModel chargingBodyModel){
@@ -153,6 +179,7 @@ public class ChargingController {
         return ResponseEntity.ok(chargingJsonResult);
     }
 
+
     @RequestMapping(value = "/getcollectioncharging",method = { RequestMethod.POST})
     public ResponseEntity<CollectionChargingJsonResult> getCollectionCharging (@RequestBody ChargingCollectionBodyModel chargingCollectionBodyModel){
         CollectionChargingJsonResult collectionChargingJsonResult = new CollectionChargingJsonResult();
@@ -181,6 +208,7 @@ public class ChargingController {
                     return a;
                 }
             });
+
             collectionChargingJsonResult.setStatus(0);
             collectionChargingJsonResult.setMsg("请求成功");
             collectionChargingContentJsonResult.setContent(collectionChargingModelList);
@@ -256,7 +284,11 @@ public class ChargingController {
         SearchWordChargingJsonResult searchWordChargingJsonResult = new SearchWordChargingJsonResult();
         SearchWordChargingContentJsonResult searchWordChargingContentJsonResult = new SearchWordChargingContentJsonResult();
         try {
-            List<SearchWordChargingModel> searchWordChargingModelList = chargingService.selectSearchWordCharging(searchWordChargingBodyModel.getSearchWord());
+            String cityStr = URLDecoder.decode(searchWordChargingBodyModel.getCity(), "utf-8");
+            logger.info("citystr == {}",cityStr);
+            String searchword = URLDecoder.decode(searchWordChargingBodyModel.getSearchWord(), "utf-8");
+            logger.info("searchword == {}",cityStr);
+            List<SearchWordChargingModel> searchWordChargingModelList = chargingService.selectSearchWordCharging(searchword);
             List<MarkModel> markModelList=chargingService.selectMark();
             for (int j = 0;j<markModelList.size();j++){
                 MarkModel markModel=markModelList.get(j);
@@ -275,22 +307,25 @@ public class ChargingController {
                         falg = false;
                     }
                 }
-                if (falg == true){
+                if (falg == true) {
                     markModelList.remove(j);
                     j--;
-                }else {
-                    SearchWordChargingModel searchWordChargingModel=searchWordChargingModelList.get(j);
-                    double distance = getDistance(searchWordChargingBodyModel.getLat(),searchWordChargingBodyModel.getLng(),searchWordChargingModel.getLat(),searchWordChargingModel.getLng());
+                } else {
+                    SearchWordChargingModel searchWordChargingModel = searchWordChargingModelList.get(j);
+                    double distance = getDistance(searchWordChargingBodyModel.getLat(), searchWordChargingBodyModel.getLng(), searchWordChargingModel.getLat(), searchWordChargingModel.getLng());
                     searchWordChargingModel.setDistance(distance);
                     searchWordChargingModel.setUsedCount(usedCount);
                     searchWordChargingModel.setAvailableCount(availableCount);
                 }
             }
-            for (SearchWordChargingModel searchWordChargingModel : searchWordChargingModelList){
-                if (!searchWordChargingModel.getCity().equals(searchWordChargingBodyModel.getCity())){
-                    searchWordChargingModelList.remove(searchWordChargingModel);
+                for (int i = 0; i < searchWordChargingModelList.size(); i++) {
+                    SearchWordChargingModel searchWordChargingModel = searchWordChargingModelList.get(i);
+                    if (!searchWordChargingModel.getCity().equals(cityStr)) {
+                        searchWordChargingModelList.remove(searchWordChargingModel);
+                        i--;
+                    }
                 }
-            }
+
             Collections.sort(searchWordChargingModelList, new Comparator<SearchWordChargingModel>() {
                 @Override
                 public int compare(SearchWordChargingModel o1, SearchWordChargingModel o2) {
@@ -329,9 +364,16 @@ public class ChargingController {
                 int p = (int) progress;
                 myChargingModel.setProgress(p);
             }
-            myChargingJsonResult.setStatus(0);
-            myChargingJsonResult.setData(myChargingModelList);
-            myChargingJsonResult.setMsg("请求成功");
+            if (myChargingModelList.size() == 0){
+                myChargingJsonResult.setStatus(1);
+                myChargingJsonResult.setData(myChargingModelList);
+                myChargingJsonResult.setMsg("数据为空！");
+            }else {
+                myChargingJsonResult.setStatus(0);
+                myChargingJsonResult.setData(myChargingModelList);
+                myChargingJsonResult.setMsg("请求成功");
+            }
+
         } catch (Exception e) {
             logger.error("Failed to get mycharging. Error = {}", e.getMessage());
             myChargingJsonResult.setMsg("Failed to get mycharging");
@@ -345,12 +387,17 @@ public class ChargingController {
     public ResponseEntity<RecordChargingJsonResult> getRecordCharging (@RequestBody RecordChargingBodyModel recordChargingBodyModel){
         RecordChargingJsonResult recordChargingJsonResult = new RecordChargingJsonResult();
         RecordChargingContentJsonResult recordChargingContentJsonResult = new RecordChargingContentJsonResult();
+        List<RecordChargingModel> recordChargingModels = new ArrayList<>();
+        recordChargingContentJsonResult.setPageIndex(recordChargingBodyModel.getPageIndex());
+        recordChargingContentJsonResult.setPageSize(recordChargingBodyModel.getPageSize());
         int completeOrder = 0;
         int availableOrder = 0;
         try {
             List<RecordChargingModel> recordChargingModelList = chargingService.selectrecordcharging(recordChargingBodyModel.getUserId());
             for (RecordChargingModel recordChargingModel:recordChargingModelList){
+
                     recordChargingModel.setPaytime(timeStamp2Date(recordChargingModel.getPaytime(),null));
+
                 if (recordChargingModel.getStatus()==0){
                     completeOrder = completeOrder + 1;
                     recordChargingModel.setState("付款完成");
@@ -360,11 +407,16 @@ public class ChargingController {
                 }
 
             }
+            for (int i=(recordChargingBodyModel.getPageIndex()-1)*recordChargingBodyModel.getPageSize();i<(recordChargingBodyModel.getPageIndex()-1)*recordChargingBodyModel.getPageSize()+recordChargingBodyModel.getPageSize();i++){
+                if (i<recordChargingModelList.size()){
+                    recordChargingModels.add(recordChargingModelList.get(i));
+                }
+            }
             recordChargingJsonResult.setStatus(0);
             recordChargingJsonResult.setMsg("请求成功");
             recordChargingContentJsonResult.setFinishedOrder(completeOrder);
             recordChargingContentJsonResult.setCancalledOrder(availableOrder);
-            recordChargingContentJsonResult.setContent(recordChargingModelList);
+            recordChargingContentJsonResult.setContent(recordChargingModels);
             recordChargingJsonResult.setData(recordChargingContentJsonResult);
         } catch (Exception e) {
             logger.error("Failed to get recordcharging. Error = {}", e.getMessage());
@@ -397,7 +449,7 @@ public class ChargingController {
     public void getConfig(HttpServletRequest request, HttpServletResponse response, @RequestBody UrlModel userurl) {
         try {
             response.setCharacterEncoding("UTF-8");
-            String appId = "wx01af434429e29725";
+            String appId = WeiXinConstants.APP_ID;
             // 获取页面路径(前端获取时采用location.href.split('#')[0]获取url)
             String url = userurl.getUrl();
             // 获取ticket
@@ -431,8 +483,8 @@ public class ChargingController {
     @RequestMapping(value = "/getOpenId", method = { RequestMethod.GET})
     public void getOpenIdForFe(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        String appId = "wx01af434429e29725";
-        String callBackUrl = "http://www.shouyifenxi.com/charger/getOpenIdJson?state=" + 1;
+        String appId = WeiXinConstants.APP_ID;
+        String callBackUrl = WeiXinConstants.REQUEST_URL+"charger/getOpenIdJson?state=" + 1;
         String redirect_uri = URLEncoder.encode(callBackUrl, "UTF-8");
         String weixinUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?redirect_uri=";
         String finalUrl = weixinUrl + redirect_uri + "&appid=" + appId + "&response_type=code&scope=snsapi_base&state=1#wechat_redirect";
@@ -446,7 +498,7 @@ public class ChargingController {
             throws ServletException, IOException {
         String codeValue = request.getParameter("code");
         logger.info("codeValue Report status.============== {}", codeValue);
-        String result = HttpClient.get("https://api.weixin.qq.com/sns/oauth2/access_token?appid=wx01af434429e29725&secret=5e517cc30f12e4ffe8b4a2a183fe88e7&code=" + codeValue + "&grant_type=authorization_code");
+        String result = HttpClient.get("https://api.weixin.qq.com/sns/oauth2/access_token?appid="+WeiXinConstants.APP_ID+"&secret="+WeiXinConstants.APP_SECRET+"&code=" + codeValue + "&grant_type=authorization_code");
         logger.info("result Report status. {}", result);
         JSONObject jsonObject = JSONObject.fromObject(result);
         String openid = jsonObject.get("openid").toString();
@@ -467,7 +519,7 @@ public class ChargingController {
             throws ServletException, IOException {
         String chargerId = request.getParameter("deviceId");
         String slotId = request.getParameter("slotIndex");
-        String appId = "wx01af434429e29725";
+        String appId = WeiXinConstants.APP_ID;
         String callBackUrl = "http://www.shouyifenxi.com/charger/getOpenIdAndRedirect?deviceId=" + chargerId
                 + "&slotIndex=" + slotId+"&state="+1;
         String redirect_uri = URLEncoder.encode(callBackUrl, "UTF-8");
@@ -485,7 +537,7 @@ public class ChargingController {
         String slotId = request.getParameter("slotIndex");
         String codeValue = request.getParameter("code");
         logger.info("codeValue Report status.============== {}",codeValue);
-        String result = HttpClient.get("https://api.weixin.qq.com/sns/oauth2/access_token?appid=wx01af434429e29725&secret=5e517cc30f12e4ffe8b4a2a183fe88e7&code="+codeValue+"&grant_type=authorization_code");
+        String result = HttpClient.get("https://api.weixin.qq.com/sns/oauth2/access_token?appid="+WeiXinConstants.APP_ID+"&secret="+WeiXinConstants.APP_SECRET+"&code="+codeValue+"&grant_type=authorization_code");
         logger.info("result Report status. {}",result);
         JSONObject jsonObject = JSONObject.fromObject(result);
         String  openid= jsonObject.get("openid").toString();
@@ -500,10 +552,10 @@ public class ChargingController {
         int subscribe = jsonObject1.getInt("subscribe");
         response.setStatus(301);
         if (subscribe == 0) {
-            String url = "http://www.shouyifenxi.com/dist/page/qrcode.html?openid="+openid;
+            String url = WeiXinConstants.REQUEST_URL+"dist/page/qrcode.html";
             response.sendRedirect(url);
         } else {
-            String url = "http://www.shouyifenxi.com/dist/page/charge.html?openid="+openid+"&deviceId="+chargerId+"&slotIndex="+slotId;
+            String url = WeiXinConstants.REQUEST_URL+"dist/page/charge.html?openid="+openid+"&deviceId="+chargerId+"&slotIndex="+slotId;
             response.sendRedirect(url);
         }
 

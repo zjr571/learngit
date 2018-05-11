@@ -10,6 +10,7 @@ import com.mysql.cj.xdevapi.JsonArray;
 import com.ruidun.service.weixinservice.Bean.JsonResult;
 import com.ruidun.service.weixinservice.model.ChargingSockModel;
 import com.ruidun.service.weixinservice.model.LocationModel;
+import com.ruidun.service.weixinservice.model.WeiXinConstants;
 import com.ruidun.service.weixinservice.service.ChargingService;
 import com.ruidun.service.weixinservice.service.UpdateService;
 import com.ruidun.service.weixinservice.service.UserService;
@@ -129,7 +130,7 @@ public class ReceiveController {
                     }else if (eventType == 101){
                         Map<String, Object> templateMap=new HashMap<>();
                         templateMap.put("touser",chargingSockstateModel.getOpenId());
-                        templateMap.put("template_id","uutDFqv6tZbb4mG2UQ9eyjkOYhlWRcw_N3awzzfUkTM");
+                        templateMap.put("template_id", WeiXinConstants.TEMPLATE_ID);
                         Map<String, Object> dataMap=new HashMap<>();
                         Map<String, Object> firstMap=new HashMap<>();
                         Map<String, Object> keyword1Map=new HashMap<>();
@@ -176,7 +177,7 @@ public class ReceiveController {
                         payRefundMap.put("merchantNumber",chargingSockstateModel.getOut_trade_no());
                         payRefundMap.put("totalFee",Integer.valueOf(chargingSockstateModel.getTotalTime())/4+"");
                         JSONObject dataJson = JSONObject.fromObject(payRefundMap);
-                        HttpClient.doPost("http://www.shouyifenxi.com/charger/wxPayRefund",dataJson.toString());
+                        HttpClient.doPost(WeiXinConstants.REQUEST_URL+"charger/wxPayRefund",dataJson.toString());
                     }else if (eventType == 102){
 
                     }

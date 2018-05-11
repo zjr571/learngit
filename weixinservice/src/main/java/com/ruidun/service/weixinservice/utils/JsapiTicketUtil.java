@@ -2,6 +2,7 @@ package com.ruidun.service.weixinservice.utils;
 
 
 
+import com.ruidun.service.weixinservice.model.WeiXinConstants;
 import net.sf.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -56,8 +57,8 @@ public class JsapiTicketUtil {
      * @return
      */
     public static String getAccessToken(){
-        String appid="wx01af434429e29725";//应用ID
-        String appSecret="5e517cc30f12e4ffe8b4a2a183fe88e7";//(应用密钥)
+        String appid= WeiXinConstants.APP_ID;//应用ID
+        String appSecret=WeiXinConstants.APP_SECRET;//(应用密钥)
         String url ="https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid="+appid+"&secret="+appSecret+"";
         String backData=sendGet(url, "utf-8", 10000);
         String accessToken = (String) JSONObject.fromObject(backData).get("access_token");

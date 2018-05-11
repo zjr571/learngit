@@ -13,6 +13,9 @@ public interface ChargingMapper {
     @Select("SELECT * FROM charging_mark")
     List<MarkModel> getmarkById();
 
+    @Select("SELECT charging_city.city,charging_city.province FROM charging_city")
+    List<CityModel> getCity();
+
     @Select("SELECT SUM(charging_state.usedCount) FROM charging_state WHERE charging_state.locationId=#{locationId}")
     SumUsedCountModel getsumusedcount(int locatinId);
 
@@ -78,6 +81,9 @@ public interface ChargingMapper {
 
     @Select("UPDATE chargingsock_state SET slotStatus = #{slotStatus},starttime=#{starttime},time=#{time},chargingTime=#{chargingTime},totalTime=#{totalTime},openId=#{openId},out_trade_no=#{out_trade_no} WHERE deviceId = #{deviceId} AND slotIndex=#{slotIndex}")
     void updateChargingsockstate (@Param("slotStatus") int slotStatus,@Param("starttime") String starttime,@Param("time") String time,@Param("chargingTime") String chargingTime,@Param("totalTime") int totalTime,@Param("openId") String openId,@Param("out_trade_no") String out_trade_no,@Param("deviceId") String deviceId,@Param("slotIndex") int slotIndex);
+
+    @Select("SELECT charging_order.status from charging_order where charging_order.out_trade_no=#{out_trade_no}")
+    int getchargingorderstatus(String out_trade_no);
 
     @Select("SELECT chargingsock_state.deviceId,chargingsock_state.slotIndex,chargingsock_state.slotStatus,chargingsock_state.starttime,chargingsock_state.totalTime,chargingsock_state.openId,chargingsock_state.out_trade_no FROM chargingsock_state WHERE chargingsock_state.deviceId=#{deviceId}")
     List<ChargingSockModel> getchargingsockstate(String deviceId);

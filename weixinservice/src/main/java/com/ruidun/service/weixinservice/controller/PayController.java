@@ -52,7 +52,7 @@ public class PayController {
                 return result;
             }
             Map<String, String> payConfigDict = PayUtils.getWeixinPara();
-            String notifyUrl = "http://www.shouyifenxi.com/charger/paycallback";
+            String notifyUrl = WeiXinConstants.REQUEST_URL+"charger/paycallback";
             logger.info("getopenid Report status.============== {}", payModel.getOpenId());
             String out_trade_no = OrderIdUtil.getOrderId();
             Map<String, Object> resultMap = PayUtils.WechatPay(out_trade_no, payModel.getPayment(), "1KUAIQIAN4HOURS", payModel.getOpenId(), notifyUrl, payConfigDict);
@@ -111,44 +111,49 @@ public class PayController {
         }
 
         try {
-                    Date day = new Date();
-                    SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                    logger.info("Pay detail:{}", params.toString());
-                    logger.info("================================支付成功{}", params.get("out_trade_no").toString());
-                    // 设置订单状态为支付成功
-                    payService.updateOrderModel(0,params.get("out_trade_no").toString());
-                    SelectOrderModel selectOrderModel = payService.selectOrderModel(params.get("out_trade_no").toString());
-                    ChargingInfoModel chargingInfoModel=payService.getpaylocation(selectOrderModel.getDeviceId());
-                    SumPaymentModel sumPaymentModel=sumService.sumPaymentModel(selectOrderModel.getOpenId());
+                    int status = payService.getchargingorderstatus(params.get("out_trade_no").toString());
+                    if (status == -1){
+                        // 设置订单状态为支付成功
+                        payService.updateOrderModel(0,params.get("out_trade_no").toString());
+                        Date day = new Date();
+                        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                        logger.info("Pay detail:{}", params.toString());
+                        logger.info("================================支付成功{}", params.get("out_trade_no").toString());
+                        SelectOrderModel selectOrderModel = payService.selectOrderModel(params.get("out_trade_no").toString());
+                        ChargingInfoModel chargingInfoModel=payService.getpaylocation(selectOrderModel.getDeviceId());
+                        SumPaymentModel sumPaymentModel=sumService.sumPaymentModel(selectOrderModel.getOpenId());
+                        String str1=selectOrderModel.getPayment()*4+"";
+                        DecimalFormat decimalFormat=new DecimalFormat("00");
+                        String time=decimalFormat.format(Integer.parseInt(str1)) + ":" + "00" + ":" + "00";
+                        //更新电桩插座为正在充电
+                        updateService.updateChargingsockstate(1,df.format(day),time,"00:00:00",selectOrderModel.getPayment()*4,selectOrderModel.getOpenId(),params.get("out_trade_no").toString(),selectOrderModel.getDeviceId(),selectOrderModel.getSlotIndex());
+                        List<ChargingSockModel> chargingSockModelList = updateService.getchargingsockstate(selectOrderModel.getDeviceId());
+                        int useCount = 0;
+                        int availableCount = 0;
+                        StringBuffer use_state = new StringBuffer();
+                        for (ChargingSockModel chargingSockModel : chargingSockModelList){
+                            if (chargingSockModel.getSlotStatus()==0){
+                                availableCount = availableCount + 1;
 
-                    String str1=selectOrderModel.getPayment()*4+"";
-                    DecimalFormat decimalFormat=new DecimalFormat("00");
-                    String time=decimalFormat.format(Integer.parseInt(str1)) + ":" + "00" + ":" + "00";
-                    updateService.updateChargingsockstate(1,df.format(day),time,"00:00:00",selectOrderModel.getPayment()*4,selectOrderModel.getOpenId(),params.get("out_trade_no").toString(),selectOrderModel.getDeviceId(),selectOrderModel.getSlotIndex());
-                    List<ChargingSockModel> chargingSockModelList = updateService.getchargingsockstate(selectOrderModel.getDeviceId());
-                    int useCount = 0;
-                    int availableCount = 0;
-                    StringBuffer use_state = new StringBuffer();
-                    for (ChargingSockModel chargingSockModel : chargingSockModelList){
-                        if (chargingSockModel.getSlotStatus()==0){
-                            availableCount = availableCount + 1;
-
-                        }else {
-                            useCount = useCount + 1;
+                            }else {
+                                useCount = useCount + 1;
+                            }
+                            use_state.append(chargingSockModel.getSlotStatus()+"");
                         }
-                        use_state.append(chargingSockModel.getSlotStatus()+"");
+                        //更新电桩状态
+                        updateService.updateChargingState(useCount,availableCount,use_state.toString(),selectOrderModel.getDeviceId());
+                        CountModel countModel=sumService.countUserCharging(selectOrderModel.getOpenId(),selectOrderModel.getDeviceId());
+                        if (countModel.getCount()==0){
+                            userService.insertUserCollection(selectOrderModel.getOpenId(),selectOrderModel.getDeviceId());
+                        }
+                        ChargingControllerUtil chargingControllerUtil=new ChargingControllerUtil();
+                        //控制电桩设备开始充电
+                        chargingControllerUtil.chargingController(selectOrderModel.getDeviceId(),selectOrderModel.getSlotIndex(),selectOrderModel.getPayment());
+                        //发送开始充电提醒
+                        chargingControllerUtil.sendMessage(selectOrderModel.getOpenId(),selectOrderModel.getDeviceId(),chargingInfoModel.getLocation(),selectOrderModel.getPayment(),sumPaymentModel.getPayment(),df.format(day));
+                    }else {
+                        return XMLParser.setXML("SUCCESS", "OK");
                     }
-                    updateService.updateChargingState(useCount,availableCount,use_state.toString(),selectOrderModel.getDeviceId());
-                     CountModel countModel=sumService.countUserCharging(selectOrderModel.getOpenId(),selectOrderModel.getDeviceId());
-                     if (countModel.getCount()==0){
-                        userService.insertUserCollection(selectOrderModel.getOpenId(),selectOrderModel.getDeviceId());
-                     }
-
-                     ChargingControllerUtil chargingControllerUtil=new ChargingControllerUtil();
-                     chargingControllerUtil.chargingController(selectOrderModel.getDeviceId(),selectOrderModel.getSlotIndex(),selectOrderModel.getPayment());
-                     chargingControllerUtil.sendMessage(selectOrderModel.getOpenId(),selectOrderModel.getDeviceId(),chargingInfoModel.getLocation(),selectOrderModel.getPayment(),sumPaymentModel.getPayment(),df.format(day));
-
-
         } catch (Exception e) {
             logger.warn(String.format("Failed to set order status, e = %s", e.getMessage()));
            e.printStackTrace();
@@ -182,19 +187,7 @@ public class PayController {
         }
         }
 
-        //控制电桩，发送充电提醒
-    @RequestMapping(value = "/setOrderController", method = {RequestMethod.POST})
-    public void setOrderController(HttpServletRequest request, HttpServletResponse response, @RequestBody PrepayModel prepayModel) {
-        Map<String, Object> result = new HashMap<>();
-        Date day = new Date();
-        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        SelectOrderModel selectOrderModel = payService.selectOrderModel(prepayModel.getOut_trade_no());
-        ChargingInfoModel chargingInfoModel=payService.getpaylocation(selectOrderModel.getDeviceId());
-        SumPaymentModel sumPaymentModel=sumService.sumPaymentModel(selectOrderModel.getOpenId());
-        ChargingControllerUtil chargingControllerUtil=new ChargingControllerUtil();
-        chargingControllerUtil.chargingController(selectOrderModel.getDeviceId(),selectOrderModel.getSlotIndex(),selectOrderModel.getPayment());
-        chargingControllerUtil.sendMessage(selectOrderModel.getOpenId(),selectOrderModel.getDeviceId(),chargingInfoModel.getLocation(),selectOrderModel.getPayment(),sumPaymentModel.getPayment(),df.format(day));
-    }
+
     @RequestMapping(value = "/wxPayRefund", method = { RequestMethod.POST })
     public String qxwxsign(HttpServletResponse response, HttpServletRequest request, @RequestBody RefundModel refundmodel) throws IOException {
         String param = WXPayUtils.wxPayRefund(refundmodel.getMerchantNumber(),String.valueOf(refundmodel.getTotalFee()*100));

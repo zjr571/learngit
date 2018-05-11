@@ -26,4 +26,9 @@ public class PayService {
 
         return  chargingMapper.getpaylocation(deviceId);
     }
+
+    public int getchargingorderstatus(String out_trade_no){
+
+        return  chargingMapper.getchargingorderstatus(out_trade_no);
+    }
 }

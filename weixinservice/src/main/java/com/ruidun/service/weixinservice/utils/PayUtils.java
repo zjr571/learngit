@@ -4,6 +4,7 @@ package com.ruidun.service.weixinservice.utils;
 
 
 
+import com.ruidun.service.weixinservice.model.WeiXinConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,9 +56,9 @@ public class PayUtils {
 
     public static Map<String, String> getWeixinPara(){
         Map<String, String> paraMap = new HashMap<>();
-        paraMap.put("appid", "wx01af434429e29725");
-        paraMap.put("mch_id", "1503101741");
-        paraMap.put("app_key", "518eb9368cc423fce6160463ed157a0e");
+        paraMap.put("appid", WeiXinConstants.APP_ID);
+        paraMap.put("mch_id", WeiXinConstants.MCH_ID);
+        paraMap.put("app_key", WeiXinConstants.API_KEY);
         return paraMap;
     }
 
@@ -101,7 +102,7 @@ public class PayUtils {
         long time = System.currentTimeMillis();
         String nowTimeStamp = String.valueOf(time / 1000);
         params.put("timeStamp", nowTimeStamp);
-        String signagain="appId="+params.get("appid")+"&nonceStr="+params.get("nonce_str")+"&package=prepay_id="+params.get("prepay_id")+"&signType=MD5&timeStamp="+params.get("timeStamp")+"&key="+"518eb9368cc423fce6160463ed157a0e";
+        String signagain="appId="+params.get("appid")+"&nonceStr="+params.get("nonce_str")+"&package=prepay_id="+params.get("prepay_id")+"&signType=MD5&timeStamp="+params.get("timeStamp")+"&key="+WeiXinConstants.API_KEY;
         String result = MD5Util.MD5Encode(signagain).toUpperCase();
         params.put("sign",result);
         return params;

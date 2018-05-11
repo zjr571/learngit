@@ -6,6 +6,7 @@ public class NearChargingBodyModel {
     private  double lng;
     private  int pageindex;
     private int pagesize;
+
     public String getAccesstoken() {
         return accesstoken;
     }

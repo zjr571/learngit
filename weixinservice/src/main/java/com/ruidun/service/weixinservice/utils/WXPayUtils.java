@@ -1,6 +1,7 @@
 package com.ruidun.service.weixinservice.utils;
 
 
+import com.ruidun.service.weixinservice.model.WeiXinConstants;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -196,16 +197,16 @@ public class WXPayUtils {
             String nonceStr = genNonceStr();
             xml.append("</xml>");
             SortedMap<String,String> parameters = new TreeMap<String,String>();
-            parameters.put("appid","wx01af434429e29725");
-            parameters.put("mch_id", "1503101741");
+            parameters.put("appid", WeiXinConstants.APP_ID);
+            parameters.put("mch_id", WeiXinConstants.MCH_ID);
             parameters.put("nonce_str", nonceStr);
             parameters.put("out_trade_no", out_trade_no);
             parameters.put("out_refund_no", nonceStr);
             parameters.put("fee_type", "CNY");
             parameters.put("total_fee", total_fee);
             parameters.put("refund_fee", total_fee);
-            parameters.put("op_user_id", "1503101741");
-            parameters.put("sign", createSign1(parameters, "518eb9368cc423fce6160463ed157a0e"));
+            parameters.put("op_user_id", WeiXinConstants.MCH_ID);
+            parameters.put("sign", createSign1(parameters, WeiXinConstants.API_KEY));
             data =SortedMaptoXml(parameters);
         } catch (Exception e) {
             System.err.println(e.getMessage());
@@ -252,14 +253,14 @@ public class WXPayUtils {
         FileInputStream instream = new FileInputStream(new File("D:\\微信商户平台支付证书\\apiclient_cert.p12"));
         String result="";
         try {
-            keyStore.load(instream, "1503101741".toCharArray());
+            keyStore.load(instream, WeiXinConstants.MCH_ID.toCharArray());
         } finally {
             instream.close();
         }
 
         // Trust own CA and all self-signed certs
         SSLContext sslcontext = SSLContexts.custom()
-                .loadKeyMaterial(keyStore, "1503101741".toCharArray())
+                .loadKeyMaterial(keyStore, WeiXinConstants.MCH_ID.toCharArray())
                 .build();
         // Allow TLSv1 protocol only
         SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(

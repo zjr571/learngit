@@ -10,6 +10,11 @@ import java.util.List;
 public class ChargingService {
     @Autowired
     ChargingMapper chargingMapper;
+
+    //获取城市列表
+    public List<CityModel> getCity() {
+        return chargingMapper.getCity();
+    }
     //获取电桩信息
     public List<ChargingModel> selectCharging(String mark) {
         return chargingMapper.getcharging(mark);

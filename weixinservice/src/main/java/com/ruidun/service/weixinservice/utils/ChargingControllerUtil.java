@@ -2,6 +2,7 @@ package com.ruidun.service.weixinservice.utils;
 
 import com.ruidun.service.weixinservice.controller.ChargingController;
 import com.ruidun.service.weixinservice.model.CountModel;
+import com.ruidun.service.weixinservice.model.WeiXinConstants;
 import net.sf.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,8 +45,8 @@ public class ChargingControllerUtil {
     public void sendMessage(String openId,String deviceId,String location,int payment,int totalPayment,String time){
         Map<String, Object> templateMap=new HashMap<>();
         templateMap.put("touser",openId);
-        templateMap.put("template_id","uutDFqv6tZbb4mG2UQ9eyjkOYhlWRcw_N3awzzfUkTM");
-        templateMap.put("url","http://www.shouyifenxi.com/dist/page/progress.html");
+        templateMap.put("template_id", WeiXinConstants.TEMPLATE_ID);
+        templateMap.put("url",WeiXinConstants.REQUEST_URL+"dist/page/progress.html");
         Map<String, Object> dataMap=new HashMap<>();
         Map<String, Object> firstMap=new HashMap<>();
         Map<String, Object> keyword1Map=new HashMap<>();
