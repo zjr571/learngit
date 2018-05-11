@@ -1,24 +1,30 @@
 package com.ruidun.service.weixinservice.utils;
 
 
-import org.dom4j.Document;
-import org.dom4j.DocumentException;
-import org.dom4j.DocumentHelper;
-import org.dom4j.Element;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.SSLContexts;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+
+import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 import javax.net.ssl.HttpsURLConnection;
+
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.ConnectException;
+import java.io.*;
+
 import java.net.URL;
+import java.security.KeyStore;
 import java.util.*;
 
 /**
@@ -162,4 +168,144 @@ public class WXPayUtils {
         }
         return true;
     }
+
+    /**
+     * 创建md5摘要,规则是:按参数名称a-z排序,遇到空值的参数不参加签名。
+     */
+    public static String createSign1(SortedMap<String, String> packageParams, String AppKey) {
+        StringBuffer sb = new StringBuffer();
+        Set es = packageParams.entrySet();
+        Iterator it = es.iterator();
+        while (it.hasNext()) {
+            Map.Entry entry = (Map.Entry) it.next();
+            String k = (String) entry.getKey();
+            String v = (String) entry.getValue();
+            if (null != v && !"".equals(v) && !"sign".equals(k) && !"key".equals(k)) {
+                sb.append(k + "=" + v + "&");
+            }
+        }
+        sb.append("key=" + AppKey);
+        String sign = MD5Util.MD5Encode2(sb.toString(), "UTF-8").toUpperCase();
+        return sign;
+    }
+
+    public static String wxPayRefund(String out_trade_no,String total_fee) {
+        StringBuffer xml = new StringBuffer();
+        String data = null;
+        try {
+            String nonceStr = genNonceStr();
+            xml.append("</xml>");
+            SortedMap<String,String> parameters = new TreeMap<String,String>();
+            parameters.put("appid","wx01af434429e29725");
+            parameters.put("mch_id", "1503101741");
+            parameters.put("nonce_str", nonceStr);
+            parameters.put("out_trade_no", out_trade_no);
+            parameters.put("out_refund_no", nonceStr);
+            parameters.put("fee_type", "CNY");
+            parameters.put("total_fee", total_fee);
+            parameters.put("refund_fee", total_fee);
+            parameters.put("op_user_id", "1503101741");
+            parameters.put("sign", createSign1(parameters, "518eb9368cc423fce6160463ed157a0e"));
+            data =SortedMaptoXml(parameters);
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
+            return null;
+        }
+        return data;
+    }
+    /**
+     * @Author: HONGLINCHEN
+     * @Description:请求值转换为xml格式 SortedMap转xml
+     * @param params
+     * @Date: 2017-9-7 17:18
+     */
+    private static String SortedMaptoXml(SortedMap<String,String> params) {
+        StringBuilder sb = new StringBuilder();
+        Set es = params.entrySet();
+        Iterator it = es.iterator();
+        sb.append("<xml>\n");
+        while(it.hasNext()) {
+            Map.Entry entry = (Map.Entry)it.next();
+            String k = (String)entry.getKey();
+            Object v = entry.getValue();
+            sb.append("<"+k+">");
+            sb.append(v);
+            sb.append("</"+k+">\n");
+        }
+        sb.append("</xml>");
+        return sb.toString();
+    }
+    /**
+     * 生成32位随机数字
+     */
+    public static String genNonceStr() {
+        Random random = new Random();
+        return MD5.getMessageDigest(String.valueOf(random.nextInt(10000)).getBytes());
+    }
+
+    /**
+     * 证书使用
+     * 微信退款
+     */
+    public static String wxPayBack(String url, String data) throws Exception {
+        KeyStore keyStore  = KeyStore.getInstance("PKCS12");
+        FileInputStream instream = new FileInputStream(new File("D:\\微信商户平台支付证书\\apiclient_cert.p12"));
+        String result="";
+        try {
+            keyStore.load(instream, "1503101741".toCharArray());
+        } finally {
+            instream.close();
+        }
+
+        // Trust own CA and all self-signed certs
+        SSLContext sslcontext = SSLContexts.custom()
+                .loadKeyMaterial(keyStore, "1503101741".toCharArray())
+                .build();
+        // Allow TLSv1 protocol only
+        SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(
+                sslcontext,
+                new String[] { "TLSv1" },
+                null,
+                SSLConnectionSocketFactory.BROWSER_COMPATIBLE_HOSTNAME_VERIFIER);
+        CloseableHttpClient httpclient = HttpClients.custom()
+                .setSSLSocketFactory(sslsf)
+                .build();
+        try {
+            HttpPost httppost = new HttpPost("https://api.mch.weixin.qq.com/secapi/pay/refund");
+            StringEntity entitys = new StringEntity(data);
+            httppost.setEntity(entitys);
+            CloseableHttpResponse response = httpclient.execute(httppost);
+            try {
+                HttpEntity entity = response.getEntity();
+
+                if (entity != null) {
+                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(entity.getContent()));
+                    String text="";
+                    String t="";
+                    while ((text=bufferedReader.readLine()) != null) {
+                        t+=text;
+                    }
+                    byte[] temp=t.getBytes("gbk");//这里写原编码方式
+                    String newStr=new String(temp,"utf-8");//这里写转换后的编码方式
+                    result=newStr;
+                }
+                EntityUtils.consume(entity);
+            } finally {
+                response.close();
+            }
+        } finally {
+            httpclient.close();
+        }
+        return result;
+    }
+
+    /**
+     * 获取随机字符串 Nonce Str
+     *
+     * @return String 随机字符串
+     */
+    public static String generateNonceStr() {
+        return UUID.randomUUID().toString().replaceAll("-", "").substring(0, 32);
+    }
+
 }

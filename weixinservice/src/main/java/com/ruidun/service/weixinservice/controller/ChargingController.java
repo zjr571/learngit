@@ -11,14 +11,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.UUID;
 
 @RestController
 @RequestMapping(value = "/charger")
@@ -26,45 +29,18 @@ public class ChargingController {
     private static final Logger logger = LoggerFactory.getLogger(ChargingController.class);
 
     @Autowired
-    private NearChargingService nearChargingService;
-    @Autowired
-    private ChargingMarkService chargingMarkService;
-    @Autowired
     private ChargingService chargingService;
-    @Autowired
-    private ChargingContentService chargingContentService;
-    @Autowired
-    private CollectionChargingService collectionChargingService;
-    @Autowired
-    private SlotChargingService slotChargingService;
-    @Autowired
-    private LocationService locationService;
-    @Autowired
-    private NowChargingService nowChargingService;
-    @Autowired
-    private SearchWordChargingService searchWordChargingService;
-    @Autowired
-    private MychargingService mychargingService;
-    @Autowired
-    private RecordChargingService recordChargingService;
-    @Autowired
-    private PayChargingService payChargingService;
-    @Autowired
-    private SumAvailableCountService sumAvailableCountService;
-    @Autowired
-    private SumUsedCountService sumUsedCountService;
 
 
     @RequestMapping(value ="/getnearcharging",method = { RequestMethod.POST})
-    public ResponseEntity<JsonResult> getnearcharging (@RequestBody NearChargingBodyModel nearChargingBodyModel){
+    public ResponseEntity<JsonResult> getNearCharging (@RequestBody NearChargingBodyModel nearChargingBodyModel){
         JsonResult jsonResult = new JsonResult();
         NearChargingJsonResult nearChargingJsonResult = new NearChargingJsonResult();
         final int n;
         try {
-            List<NearChargingModel> nearChargingModelList = nearChargingService.selectNearChargingInfo();
-            List<MarkModel> markModelList=chargingMarkService.selectMark();
+            List<NearChargingModel> nearChargingModelList = chargingService.selectNearChargingInfo();
+            List<MarkModel> markModelList=chargingService.selectMark();
             List<NearChargingModel> nearChargingModes = new ArrayList<>();
-
                 for (int j = 0;j< markModelList.size();j++){
                     MarkModel markModel = markModelList.get(j);
                     int usedCount = 0;
@@ -82,11 +58,15 @@ public class ChargingController {
                         falg=false;
                     }
                 }
-                    NearChargingModel nearChargingModel = nearChargingModelList.get(j);
-                    double distance=getdistance(nearChargingBodyModel.getLat(),nearChargingBodyModel.getLng(),nearChargingModel.getLat(),nearChargingModel.getLng());
+                NearChargingModel nearChargingModel = nearChargingModelList.get(j);
+                if (nearChargingBodyModel.getLat()==0||nearChargingBodyModel.getLng()==0){
+                    nearChargingModel.setDistance(-1);
+                }else {
+                    double distance = getDistance(nearChargingBodyModel.getLat(),nearChargingBodyModel.getLng(),nearChargingModel.getLat(),nearChargingModel.getLng());
                     nearChargingModel.setDistance(distance);
                     nearChargingModel.setUsedCount(usedCount);
                     nearChargingModel.setAvailableCount(availableCount);
+                }
             }
             for (int i=(nearChargingBodyModel.getPageindex()-1)*nearChargingBodyModel.getPagesize();i<(nearChargingBodyModel.getPageindex()-1)*nearChargingBodyModel.getPagesize()+nearChargingBodyModel.getPagesize();i++){
                 if (i<nearChargingModelList.size()){
@@ -123,7 +103,7 @@ public class ChargingController {
 
 
     @RequestMapping(value ="/getcharging",method = { RequestMethod.POST})
-    public ResponseEntity<ChargingJsonResult> getcharging (@RequestBody ChargingBodyModel chargingBodyModel){
+    public ResponseEntity<ChargingJsonResult> getCharging (@RequestBody ChargingBodyModel chargingBodyModel){
         ChargingJsonResult chargingJsonResult = new ChargingJsonResult();
         ChargingContentJsonResult chargingContentJsonResult = new ChargingContentJsonResult();
         try {
@@ -135,22 +115,24 @@ public class ChargingController {
             double lng = 0;
             double distance = 0;
             List<ChargingModel> chargingModelList = chargingService.selectCharging(chargingBodyModel.getLocationId());
-            List<ChargingContentModel> chargingContentModels = chargingContentService.selectCharging(chargingBodyModel.getLocationId());
+            List<ChargingContentModel> chargingContentModels = chargingService.selectContenCharging(chargingBodyModel.getLocationId());
             for (int i = 0;i< chargingModelList.size();i++){
                 ChargingModel chargingModel = chargingModelList.get(i);
                 usedCount = usedCount+chargingModel.getUsedCount();
                 availableCount = availableCount+chargingModel.getAvailableCount();
                 if (i==0){
-                     location = chargingModel.getLocation();
-                     locationDetail = chargingModel.getLocationDetail();
-                     lat = chargingModel.getLat();
-                     lng = chargingModel.getLng();
-                    distance=getdistance(chargingBodyModel.getLat(),chargingBodyModel.getLng(),lat,lng);
-
+                    if (chargingBodyModel.getLat()==0||chargingBodyModel.getLng()==0){
+                        distance = -1;
+                    }else {
+                        location = chargingModel.getLocation();
+                        locationDetail = chargingModel.getLocationDetail();
+                        lat = chargingModel.getLat();
+                        lng = chargingModel.getLng();
+                        distance = getDistance(chargingBodyModel.getLat(),chargingBodyModel.getLng(),lat,lng);
+                    }
 
                 }
             }
-
             chargingJsonResult.setStatus(0);
             chargingJsonResult.setMsg("请求成功");
             chargingContentJsonResult.setAvailableCountTotal(availableCount);
@@ -162,8 +144,6 @@ public class ChargingController {
             chargingContentJsonResult.setDistance(distance);
             chargingContentJsonResult.setContent(chargingContentModels);
             chargingJsonResult.setData(chargingContentJsonResult);
-
-
         } catch (Exception e) {
             logger.error("Failed to get charging. Error = {}", e.getMessage());
             chargingJsonResult.setMsg("Failed to get charging");
@@ -174,14 +154,19 @@ public class ChargingController {
     }
 
     @RequestMapping(value = "/getcollectioncharging",method = { RequestMethod.POST})
-    public ResponseEntity<CollectionChargingJsonResult> getcollectioncharging (@RequestBody ChargingCollectionBodyModel chargingCollectionBodyModel){
+    public ResponseEntity<CollectionChargingJsonResult> getCollectionCharging (@RequestBody ChargingCollectionBodyModel chargingCollectionBodyModel){
         CollectionChargingJsonResult collectionChargingJsonResult = new CollectionChargingJsonResult();
         CollectionChargingContentJsonResult collectionChargingContentJsonResult = new CollectionChargingContentJsonResult();
         try {
-            List<CollectionChargingModel> collectionChargingModelList = collectionChargingService.selectcollectionCharging(chargingCollectionBodyModel.getUserId());
+            List<CollectionChargingModel> collectionChargingModelList = chargingService.selectcollectionCharging(chargingCollectionBodyModel.getUserId());
             for (CollectionChargingModel collectionChargingModel:collectionChargingModelList){
-                double distance=getdistance(chargingCollectionBodyModel.getLat(),chargingCollectionBodyModel.getLng(),collectionChargingModel.getLat(),collectionChargingModel.getLng());
-                collectionChargingModel.setDistance(distance);
+                if (chargingCollectionBodyModel.getLat() == 0||chargingCollectionBodyModel.getLng() == 0){
+                    double distance = -1;
+                    collectionChargingModel.setDistance(distance);
+                }else {
+                    double distance = getDistance(chargingCollectionBodyModel.getLat(),chargingCollectionBodyModel.getLng(),collectionChargingModel.getLat(),collectionChargingModel.getLng());
+                    collectionChargingModel.setDistance(distance);
+                }
             }
             Collections.sort(collectionChargingModelList, new Comparator<CollectionChargingModel>() {
                 @Override
@@ -211,14 +196,19 @@ public class ChargingController {
     }
 
     @RequestMapping(value = "/getslotcharging",method = { RequestMethod.POST})
-    public ResponseEntity<SlotChargingJsonResult> getslotcharging (@RequestBody SlotChargingBodyModel slotChargingBodyModel){
+    public ResponseEntity<SlotChargingJsonResult> getSlotCharging (@RequestBody SlotChargingBodyModel slotChargingBodyModel){
         SlotChargingJsonResult slotChargingJsonResult = new SlotChargingJsonResult();
         SlotChargingContentJsonResult slotChargingContentJsonResult = new SlotChargingContentJsonResult();
         try {
-            List<SlotChargingModel> slotChargingModelList = slotChargingService.selectslotCharging(slotChargingBodyModel.getDeviceId());
-            List<LocationModel> locationModelList = locationService.selectlocation(slotChargingBodyModel.getDeviceId());
+            List<SlotChargingModel> slotChargingModelList = chargingService.selectslotCharging(slotChargingBodyModel.getDeviceId());
+            List<LocationModel> locationModelList = chargingService.selectlocation(slotChargingBodyModel.getDeviceId());
             LocationModel locationModel=locationModelList.get(0);
-            double distance=getdistance(slotChargingBodyModel.getLat(),slotChargingBodyModel.getLng(),locationModel.getLat(),locationModel.getLng());
+            double distance = 0;
+            if (slotChargingBodyModel.getLat()==0||slotChargingBodyModel.getLng()==0) {
+                 distance = -1;
+            }else {
+                 distance = getDistance(slotChargingBodyModel.getLat(),slotChargingBodyModel.getLng(),locationModel.getLat(),locationModel.getLng());
+            }
 
             slotChargingJsonResult.setStatus(0);
             slotChargingJsonResult.setMsg("请求成功");
@@ -239,19 +229,19 @@ public class ChargingController {
         return ResponseEntity.ok(slotChargingJsonResult);
     }
     @RequestMapping(value = "/getChargingProgress",method = { RequestMethod.POST})
-    public ResponseEntity<NowChargingJsonResult> getslotcharging (@RequestBody NowChargingBodyModel nowChargingBodyModel){
+    public ResponseEntity<NowChargingJsonResult> getChargingProgress (@RequestBody NowChargingBodyModel nowChargingBodyModel){
         NowChargingJsonResult nowChargingJsonResult = new NowChargingJsonResult();
         try {
-            NowChargingModel nowChargingModel = nowChargingService.selectNowCharging(nowChargingBodyModel.getDeviceId(),nowChargingBodyModel.getSlotIndex());
+            NowChargingModel nowChargingModel = chargingService.selectNowCharging(nowChargingBodyModel.getDeviceId(),nowChargingBodyModel.getSlotIndex());
             long l = getSeconds(nowChargingModel.getTime());
             long l2 = getSeconds(nowChargingModel.getChargingTime());
             double progress = (double) l2/(l+l2)*100;
             int p = (int)progress;
+
             nowChargingModel.setProgress(p);
             nowChargingJsonResult.setStatus(0);
             nowChargingJsonResult.setData(nowChargingModel);
             nowChargingJsonResult.setMsg("请求成功");
-
         } catch (Exception e) {
             logger.error("Failed to get ChargingProgress. Error = {}", e.getMessage());
             nowChargingJsonResult.setMsg("Failed to get ChargingProgress");
@@ -262,12 +252,12 @@ public class ChargingController {
     }
 
     @RequestMapping(value = "/getsearchWordcharging",method = { RequestMethod.POST})
-    public ResponseEntity<SearchWordChargingJsonResult> getsearchcharging (@RequestBody SearchWordChargingBodyModel searchWordChargingBodyModel){
+    public ResponseEntity<SearchWordChargingJsonResult> getSearchCharging (@RequestBody SearchWordChargingBodyModel searchWordChargingBodyModel){
         SearchWordChargingJsonResult searchWordChargingJsonResult = new SearchWordChargingJsonResult();
         SearchWordChargingContentJsonResult searchWordChargingContentJsonResult = new SearchWordChargingContentJsonResult();
         try {
-            List<SearchWordChargingModel> searchWordChargingModelList = searchWordChargingService.selectSearchWordCharging(searchWordChargingBodyModel.getSearchWord());
-            List<MarkModel> markModelList=chargingMarkService.selectMark();
+            List<SearchWordChargingModel> searchWordChargingModelList = chargingService.selectSearchWordCharging(searchWordChargingBodyModel.getSearchWord());
+            List<MarkModel> markModelList=chargingService.selectMark();
             for (int j = 0;j<markModelList.size();j++){
                 MarkModel markModel=markModelList.get(j);
                 int usedCount = 0;
@@ -290,8 +280,7 @@ public class ChargingController {
                     j--;
                 }else {
                     SearchWordChargingModel searchWordChargingModel=searchWordChargingModelList.get(j);
-                    double distance=getdistance(searchWordChargingBodyModel.getLat(),searchWordChargingBodyModel.getLng(),searchWordChargingModel.getLat(),searchWordChargingModel.getLng());
-
+                    double distance = getDistance(searchWordChargingBodyModel.getLat(),searchWordChargingBodyModel.getLng(),searchWordChargingModel.getLat(),searchWordChargingModel.getLng());
                     searchWordChargingModel.setDistance(distance);
                     searchWordChargingModel.setUsedCount(usedCount);
                     searchWordChargingModel.setAvailableCount(availableCount);
@@ -329,19 +318,20 @@ public class ChargingController {
     }
 
     @RequestMapping(value = "/getmycharging",method = { RequestMethod.POST})
-    public ResponseEntity<MyChargingJsonResult> getslotcharging (@RequestBody MyChargingBodyModel myChargingBodyModel){
+    public ResponseEntity<MyChargingJsonResult> getMyCharging (@RequestBody MyChargingBodyModel myChargingBodyModel){
         MyChargingJsonResult myChargingJsonResult = new MyChargingJsonResult();
         try {
-           MyChargingModel myChargingModel = mychargingService.selectmycharging(myChargingBodyModel.getUserId());
-            logger.info("Failed to get mycharging. Error = {}",myChargingModel.getTime());
-           long l = getSeconds(myChargingModel.getTime());
-           long l2 = getSeconds(myChargingModel.getChargingTime());
-           double progress = (double) l2/(l+l2)*100;
-           int p = (int)progress;
-           myChargingModel.setProgress(p);
-           myChargingJsonResult.setStatus(0);
-           myChargingJsonResult.setData(myChargingModel);
-           myChargingJsonResult.setMsg("请求成功");
+            List<MyChargingModel> myChargingModelList = chargingService.selectmycharging(myChargingBodyModel.getUserId());
+            for (MyChargingModel myChargingModel : myChargingModelList){
+                long l = getSeconds(myChargingModel.getTime());
+                long l2 = getSeconds(myChargingModel.getChargingTime());
+                double progress = (double) l2 / (l + l2) * 100;
+                int p = (int) progress;
+                myChargingModel.setProgress(p);
+            }
+            myChargingJsonResult.setStatus(0);
+            myChargingJsonResult.setData(myChargingModelList);
+            myChargingJsonResult.setMsg("请求成功");
         } catch (Exception e) {
             logger.error("Failed to get mycharging. Error = {}", e.getMessage());
             myChargingJsonResult.setMsg("Failed to get mycharging");
@@ -352,21 +342,30 @@ public class ChargingController {
     }
 
     @RequestMapping(value ="/getrecordcharging",method = { RequestMethod.POST})
-    public ResponseEntity<RecordChargingJsonResult> getslotcharging (@RequestBody RecordChargingBodyModel recordChargingBodyModel){
+    public ResponseEntity<RecordChargingJsonResult> getRecordCharging (@RequestBody RecordChargingBodyModel recordChargingBodyModel){
         RecordChargingJsonResult recordChargingJsonResult = new RecordChargingJsonResult();
         RecordChargingContentJsonResult recordChargingContentJsonResult = new RecordChargingContentJsonResult();
+        int completeOrder = 0;
+        int availableOrder = 0;
         try {
-            List<RecordChargingModel> recordChargingModelList = recordChargingService.selectrecordcharging(recordChargingBodyModel.getUserId());
+            List<RecordChargingModel> recordChargingModelList = chargingService.selectrecordcharging(recordChargingBodyModel.getUserId());
             for (RecordChargingModel recordChargingModel:recordChargingModelList){
-                recordChargingModel.setState("付款完成");
+                    recordChargingModel.setPaytime(timeStamp2Date(recordChargingModel.getPaytime(),null));
+                if (recordChargingModel.getStatus()==0){
+                    completeOrder = completeOrder + 1;
+                    recordChargingModel.setState("付款完成");
+                }else {
+                    availableOrder = availableOrder + 1;
+                    recordChargingModel.setState("付款失败");
+                }
+
             }
             recordChargingJsonResult.setStatus(0);
             recordChargingJsonResult.setMsg("请求成功");
-            recordChargingContentJsonResult.setFinishedOrder(23);
-            recordChargingContentJsonResult.setCancalledOrder(12);
+            recordChargingContentJsonResult.setFinishedOrder(completeOrder);
+            recordChargingContentJsonResult.setCancalledOrder(availableOrder);
             recordChargingContentJsonResult.setContent(recordChargingModelList);
             recordChargingJsonResult.setData(recordChargingContentJsonResult);
-
         } catch (Exception e) {
             logger.error("Failed to get recordcharging. Error = {}", e.getMessage());
             recordChargingJsonResult.setMsg("Failed to get recordcharging");
@@ -377,12 +376,12 @@ public class ChargingController {
     }
 
     @RequestMapping(value = "/getpaycharging",method = { RequestMethod.POST})
-    public ResponseEntity<PayChargingJsonResult> getslotcharging (@RequestBody PayChargingBodyModel payChargingBodyModel){
+    public ResponseEntity<PayChargingJsonResult> getPayCharging (@RequestBody PayChargingBodyModel payChargingBodyModel){
         PayChargingJsonResult payChargingJsonResult = new PayChargingJsonResult();
         try {
             String deviceId = payChargingBodyModel.getDeviceId();
             int slotIndex = payChargingBodyModel.getSlotIndex();
-            PayChargingModel payChargingModel = payChargingService.selectpayCharging(deviceId, slotIndex);
+            PayChargingModel payChargingModel = chargingService.selectpayCharging(deviceId, slotIndex);
             payChargingJsonResult.setData(payChargingModel);
             payChargingJsonResult.setMsg("请求成功");
         } catch (Exception e) {
@@ -417,7 +416,6 @@ public class ChargingController {
             ret.put("timestamp", timeStamp);
             ret.put("nonceStr", noncestr);
             ret.put("signature", signature);
-
             JSONObject json = JSONObject.fromObject(ret);
             PrintWriter out = response.getWriter();
             out.print(json);
@@ -425,7 +423,6 @@ public class ChargingController {
             out.close();
         } catch (Exception e) {
             logger.error("Failed to get config. Error = {}", e.getMessage());
-
             e.printStackTrace();
         }
     }
@@ -435,11 +432,11 @@ public class ChargingController {
     public void getOpenIdForFe(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         String appId = "wx01af434429e29725";
-        String callBackUrl = "http://www.shouyifenxi.com/charger/getOpenIdJson?state="+1;
+        String callBackUrl = "http://www.shouyifenxi.com/charger/getOpenIdJson?state=" + 1;
         String redirect_uri = URLEncoder.encode(callBackUrl, "UTF-8");
         String weixinUrl = "https://open.weixin.qq.com/connect/oauth2/authorize?redirect_uri=";
-        String finalUrl = weixinUrl + redirect_uri+ "&appid="+appId+"&response_type=code&scope=snsapi_base&state=1#wechat_redirect";
-        logger.info("finalUrl Report status.============== {}",finalUrl);
+        String finalUrl = weixinUrl + redirect_uri + "&appid=" + appId + "&response_type=code&scope=snsapi_base&state=1#wechat_redirect";
+        logger.info("finalUrl Report status.============== {}", finalUrl);
         response.setStatus(301);
         response.sendRedirect(finalUrl);
     }
@@ -493,6 +490,8 @@ public class ChargingController {
         JSONObject jsonObject = JSONObject.fromObject(result);
         String  openid= jsonObject.get("openid").toString();
         logger.info("openid Report status. {}",openid);
+
+
         Map map=  AccessTokenUtil.getInstance().getAccessTokenAndJsapiTicket();
         logger.info("accesstoken  Report status. {}",map.get("access_token"));
         String infoJson = HttpClient.get("https://api.weixin.qq.com/cgi-bin/user/info?access_token="+map.get("access_token")+"&openid="+openid+"&lang=zh_CN");
@@ -501,16 +500,17 @@ public class ChargingController {
         int subscribe = jsonObject1.getInt("subscribe");
         response.setStatus(301);
         if (subscribe == 0) {
-            String url = "http://www.shouyifenxi.com/dist/page/qrcode.html";
+            String url = "http://www.shouyifenxi.com/dist/page/qrcode.html?openid="+openid;
             response.sendRedirect(url);
         } else {
             String url = "http://www.shouyifenxi.com/dist/page/charge.html?openid="+openid+"&deviceId="+chargerId+"&slotIndex="+slotId;
             response.sendRedirect(url);
         }
+
     }
 
     @RequestMapping(value = "/getUserProfile", method = { RequestMethod.POST})
-    public ResponseEntity<MyCentreJsonResult> getmycentreOpenId(HttpServletRequest request, HttpServletResponse response, @RequestBody GetMyModel getMyModel)
+    public ResponseEntity<MyCentreJsonResult> getMyCentreOpenId(HttpServletRequest request, HttpServletResponse response, @RequestBody GetMyModel getMyModel)
             throws ServletException, IOException {
         MyCentreJsonResult myCentreJsonResult = new MyCentreJsonResult();
         try {
@@ -540,22 +540,30 @@ public class ChargingController {
         try {
             SimpleDateFormat sDateFormat = new SimpleDateFormat("HH:mm:ss");
             Date time1 = sDateFormat.parse(time);
-
             seconds = time1.getHours()*3600+time1.getMinutes()*60+time1.getSeconds();
-
-
         }catch (Exception e){
             e.printStackTrace();
         }
-
         return seconds;
     }
 
-    private double getdistance(double bodylat,double bodylng,double lat,double lng){
+    private double getDistance(double bodylat,double bodylng,double lat,double lng){
         double[] gps = GPSUtil.gps84_To_Gcj02(bodylat,bodylng);
         Double distance =  DistanceUtil.getDistance(gps[0],gps[1],lat,lng);
         BigDecimal b = new BigDecimal(distance);
         distance = b.setScale(3,BigDecimal.ROUND_HALF_UP).doubleValue();
         return distance;
     }
+
+    public static String timeStamp2Date(String seconds, String format) {
+        if (seconds == null || seconds.isEmpty() || seconds.equals("null")) {
+            return "";
+        }
+        if (format == null || format.isEmpty()) {
+            format = "yyyy-MM-dd HH:mm:ss";
+        }
+        SimpleDateFormat sdf = new SimpleDateFormat(format);
+        return sdf.format(new Date(Long.valueOf(seconds + "000")));
+    }
+
 }

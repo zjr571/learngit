@@ -10,6 +10,15 @@ public class NowChargingModel {
     private  String chargingTime;
     private String slotSN;
     private int progress;
+    private String totalTime;
+
+    public String getTotalTime() {
+        return totalTime;
+    }
+
+    public void setTotalTime(String totalTime) {
+        this.totalTime = totalTime;
+    }
 
     public int getSlotIndex() {
         return slotIndex;

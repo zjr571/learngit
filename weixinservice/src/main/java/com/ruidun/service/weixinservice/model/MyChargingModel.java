@@ -8,6 +8,19 @@ public class MyChargingModel {
     private  String startTime;
     private String time;
     private  String chargingTime;
+    private String slotSN;
+    private int progress;
+    private int chargerIndex;
+
+    public String getTotalTime() {
+        return totalTime;
+    }
+
+    public void setTotalTime(String totalTime) {
+        this.totalTime = totalTime;
+    }
+
+    private String totalTime;
 
     public String getSlotSN() {
         return slotSN;
@@ -17,9 +30,7 @@ public class MyChargingModel {
         this.slotSN = slotSN;
     }
 
-    private String slotSN;
-    private int progress;
-    private int chargerIndex;
+
     public String getChargingTime() {
         return chargingTime;
     }

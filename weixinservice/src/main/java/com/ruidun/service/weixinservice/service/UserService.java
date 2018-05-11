@@ -1,19 +1,17 @@
 package com.ruidun.service.weixinservice.service;
 
 import com.ruidun.service.weixinservice.mapper.ChargingMapper;
-import com.ruidun.service.weixinservice.model.LocationModel;
-import com.ruidun.service.weixinservice.model.MyChargingModel;
+import com.ruidun.service.weixinservice.model.SumUsedCountModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import java.util.List;
 
 @Service
-public class MychargingService {
+public class UserService {
     @Autowired
     ChargingMapper chargingMapper;
 
+    public void insertUserCollection(String userid,String deviceId) {
 
-    public MyChargingModel selectmycharging(String userid) {
-        return chargingMapper.getmycharging(userid);
+         chargingMapper.insertUserCollection(userid,deviceId);
     }
 }

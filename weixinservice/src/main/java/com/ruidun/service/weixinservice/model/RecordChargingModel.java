@@ -3,9 +3,46 @@ package com.ruidun.service.weixinservice.model;
 public class RecordChargingModel {
     private String deviceId;
     private String location;
-    private String startTime;
+    private String paytime;
+    private int slotIndex;
     private int payment;
     private String state;
+    private int status;
+    private int chargerIndex;
+
+    public int getChargerIndex() {
+        return chargerIndex;
+    }
+
+    public void setChargerIndex(int chargerIndex) {
+        this.chargerIndex = chargerIndex;
+    }
+
+    public String getPaytime() {
+        return paytime;
+    }
+
+    public void setPaytime(String paytime) {
+        this.paytime = paytime;
+    }
+
+    public int getSlotIndex() {
+        return slotIndex;
+    }
+
+    public void setSlotIndex(int slotIndex) {
+        this.slotIndex = slotIndex;
+    }
+
+
+
+    public int getStatus() {
+        return status;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
+    }
 
     public String getDeviceId() {
         return deviceId;
@@ -23,13 +60,6 @@ public class RecordChargingModel {
         this.location = location;
     }
 
-    public String getStartTime() {
-        return startTime;
-    }
-
-    public void setStartTime(String startTime) {
-        this.startTime = startTime;
-    }
 
     public int getPayment() {
         return payment;

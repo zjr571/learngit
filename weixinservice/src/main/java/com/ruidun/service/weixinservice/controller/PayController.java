@@ -1,47 +1,47 @@
 package com.ruidun.service.weixinservice.controller;
 
+import com.alibaba.fastjson.JSON;
+import com.mysql.cj.core.util.LogUtils;
 import com.ruidun.service.weixinservice.model.*;
 import com.ruidun.service.weixinservice.service.*;
 import  com.ruidun.service.weixinservice.utils.XMLParser;
 import com.ruidun.service.weixinservice.utils.*;
-import javafx.beans.binding.ObjectExpression;
 import net.sf.json.JSONObject;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.ModelAndView;
 
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping(value = "/charger")
 public class PayController {
     private static final Logger logger = LoggerFactory.getLogger(ChargingController.class);
     @Autowired
-    private InsertOrderService insertOrderService;
+    private PayService payService;
     @Autowired
-    private UpdateOrderService updateOrderService;
+    private SumService sumService;
     @Autowired
-    private SelectOrderService selectOrderService;
+    private UserService userService;
     @Autowired
-    private ChargingContentService chargingContentService;
-    @Autowired
-    private SumUsedCountService sumUsedCountService;
+    private UpdateService updateService;
+
+
 
     @RequestMapping(value = "/createOrder", method = {RequestMethod.POST})
     public Map<String, Object> createOrder(HttpServletRequest request, HttpServletResponse response, @RequestBody PayModel payModel) {
@@ -54,7 +54,7 @@ public class PayController {
             Map<String, String> payConfigDict = PayUtils.getWeixinPara();
             String notifyUrl = "http://www.shouyifenxi.com/charger/paycallback";
             logger.info("getopenid Report status.============== {}", payModel.getOpenId());
-            String out_trade_no = OrderIdUtil.getorderId();
+            String out_trade_no = OrderIdUtil.getOrderId();
             Map<String, Object> resultMap = PayUtils.WechatPay(out_trade_no, payModel.getPayment(), "1KUAIQIAN4HOURS", payModel.getOpenId(), notifyUrl, payConfigDict);
             resultMap.put("out_trade_no", out_trade_no);
             if (null == resultMap) {
@@ -66,7 +66,7 @@ public class PayController {
             result.put("msg", "获取prepayid成功");
             result.put("data", resultMap);
             logger.info("result Report status.============== {}", result);
-            insertOrderService.insertorder(payModel.getOpenId(), "111", payModel.getPayment(), resultMap.get("timeStamp").toString(), -1, resultMap.get("prepay_id").toString(), payModel.getDeviceId(), payModel.getSlotIndex(), resultMap.get("out_trade_no").toString());
+            payService.insertorder(payModel.getOpenId(), "ruidun", payModel.getPayment(), resultMap.get("timeStamp").toString(), -1, resultMap.get("prepay_id").toString(), payModel.getDeviceId(), payModel.getSlotIndex(), resultMap.get("out_trade_no").toString());
             return result;
         } catch (Exception o) {
             logger.error("ERROR:{}", o.getStackTrace().toString());
@@ -99,101 +99,62 @@ public class PayController {
 
         if (!params.get("result_code").toString().equalsIgnoreCase("SUCCESS")) {
             logger.warn(String.format("RechargeWechatNotify error! 微信API返回错误信息：%s", params.get("result_msg").toString()));
-            updateOrderService.updateOrderModel(1,params.get("out_trade_no").toString());
+            payService.updateOrderModel(1,params.get("out_trade_no").toString());
             return XMLParser.setXML("FAILED", "");
         }
         Map<String, String> payConfigDict = PayUtils.getWeixinPara();
         if (!WXPayUtils.checkIsSignValidFromResponse(params, payConfigDict.get("app_key"))) {
             logger.warn("RechargeWechatNotify error! 微信API返回的数据签名验证不通过，有可能被第三方篡改!!!KEY="
                     + payConfigDict.get("app_key"));
-            updateOrderService.updateOrderModel(1,params.get("out_trade_no").toString());
+            payService.updateOrderModel(1,params.get("out_trade_no").toString());
             return XMLParser.setXML("FAILED", "");
         }
 
         try {
+                    Date day = new Date();
+                    SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                     logger.info("Pay detail:{}", params.toString());
                     logger.info("================================支付成功{}", params.get("out_trade_no").toString());
                     // 设置订单状态为支付成功
-                    updateOrderService.updateOrderModel(0,params.get("out_trade_no").toString());
-                    SelectOrderModel selectOrderModel = selectOrderService.selectOrderModel(params.get("out_trade_no").toString());
-                    ChargingInfoModel chargingInfoModel=chargingContentService.getpaylocation(selectOrderModel.getDeviceId());
-                    SumPaymentModel sumPaymentModel=sumUsedCountService.sumPaymentModel(selectOrderModel.getOpenId());
-                    Map<String, Object> templateMap=new HashMap<>();
-                    templateMap.put("touser",selectOrderModel.getOpenId());
-                    templateMap.put("template_id","uutDFqv6tZbb4mG2UQ9eyjkOYhlWRcw_N3awzzfUkTM");
-                    templateMap.put("url","http://www.baidu.com");
-                    Map<String, Object> dataMap=new HashMap<>();
-                    Map<String, Object> firstMap=new HashMap<>();
-                    Map<String, Object> keyword1Map=new HashMap<>();
-                    Map<String, Object> keyword2Map=new HashMap<>();
-                    Map<String, Object> keyword3Map=new HashMap<>();
-                    Map<String, Object> keyword4Map=new HashMap<>();
-                    Map<String, Object> keyword5Map=new HashMap<>();
-                    Map<String, Object> remarkMap=new HashMap<>();
-                    firstMap.put("value","充电开始提醒");
-                    firstMap.put("color","#173177");
-                    dataMap.put("first",firstMap);
-                    keyword1Map.put("value",selectOrderModel.getDeviceId());
-                    keyword1Map.put("color","#173177");
-                    dataMap.put("keyword1",keyword1Map);
-                    keyword2Map.put("value",chargingInfoModel.getLocation());
-                    keyword2Map.put("color","#173177");
-                    dataMap.put("keyword2",keyword2Map);
-                    keyword3Map.put("value",selectOrderModel.getPayment()*4+"小时");
-                    keyword3Map.put("color","#173177");
-                    dataMap.put("keyword3",keyword3Map);
-                    keyword4Map.put("value",sumPaymentModel.getPayment()*4+"小时");
-                    keyword4Map.put("color","#173177");
-                    dataMap.put("keyword4",keyword4Map);
-                    Date day=new Date();
-                    SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                    keyword5Map.put("value",df.format(day));
-                    keyword5Map.put("color","#173177");
-                    dataMap.put("keyword5",keyword5Map);
-                    remarkMap.put("value","感谢您使用【小太阳】充电桩！");
-                    remarkMap.put("color","#173177");
-                    dataMap.put("remark",remarkMap);
-                    templateMap.put("data",dataMap);
-                    JSONObject templateJson = JSONObject.fromObject(templateMap);
-                    Map map=  AccessTokenUtil.getInstance().getAccessTokenAndJsapiTicket();
-                    String templatejsonvalues = HttpClient.doPost("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token="+map.get("access_token"),templateJson.toString());
-                    JSONObject resulttemplatejson = JSONObject.fromObject(templatejsonvalues);
-                    if (resulttemplatejson.getInt("errcode")==0){
-                        logger.info("template=={}","创建模板成功!!!");
-                    }else {
-                        logger.error("error template=={}",resulttemplatejson.getString("errmsg"));
+                    payService.updateOrderModel(0,params.get("out_trade_no").toString());
+                    SelectOrderModel selectOrderModel = payService.selectOrderModel(params.get("out_trade_no").toString());
+                    ChargingInfoModel chargingInfoModel=payService.getpaylocation(selectOrderModel.getDeviceId());
+                    SumPaymentModel sumPaymentModel=sumService.sumPaymentModel(selectOrderModel.getOpenId());
+
+                    String str1=selectOrderModel.getPayment()*4+"";
+                    DecimalFormat decimalFormat=new DecimalFormat("00");
+                    String time=decimalFormat.format(Integer.parseInt(str1)) + ":" + "00" + ":" + "00";
+                    updateService.updateChargingsockstate(1,df.format(day),time,"00:00:00",selectOrderModel.getPayment()*4,selectOrderModel.getOpenId(),params.get("out_trade_no").toString(),selectOrderModel.getDeviceId(),selectOrderModel.getSlotIndex());
+                    List<ChargingSockModel> chargingSockModelList = updateService.getchargingsockstate(selectOrderModel.getDeviceId());
+                    int useCount = 0;
+                    int availableCount = 0;
+                    StringBuffer use_state = new StringBuffer();
+                    for (ChargingSockModel chargingSockModel : chargingSockModelList){
+                        if (chargingSockModel.getSlotStatus()==0){
+                            availableCount = availableCount + 1;
+
+                        }else {
+                            useCount = useCount + 1;
+                        }
+                        use_state.append(chargingSockModel.getSlotStatus()+"");
                     }
+                    updateService.updateChargingState(useCount,availableCount,use_state.toString(),selectOrderModel.getDeviceId());
+                     CountModel countModel=sumService.countUserCharging(selectOrderModel.getOpenId(),selectOrderModel.getDeviceId());
+                     if (countModel.getCount()==0){
+                        userService.insertUserCollection(selectOrderModel.getOpenId(),selectOrderModel.getDeviceId());
+                     }
+
+                     ChargingControllerUtil chargingControllerUtil=new ChargingControllerUtil();
+                     chargingControllerUtil.chargingController(selectOrderModel.getDeviceId(),selectOrderModel.getSlotIndex(),selectOrderModel.getPayment());
+                     chargingControllerUtil.sendMessage(selectOrderModel.getOpenId(),selectOrderModel.getDeviceId(),chargingInfoModel.getLocation(),selectOrderModel.getPayment(),sumPaymentModel.getPayment(),df.format(day));
+
+
         } catch (Exception e) {
             logger.warn(String.format("Failed to set order status, e = %s", e.getMessage()));
            e.printStackTrace();
+            return XMLParser.setXML("SUCCESS", "OK");
         }
         return XMLParser.setXML("SUCCESS", "OK");
-//        Map<String, Object> resultMap=new HashMap<>();
-//        resultMap.put("accessToken","518eb9368cc423fce6160463ed157a0e");
-//        resultMap.put("commandType",3);
-//        resultMap.put("status","0");
-//        resultMap.put("deviceId",selectOrderModel.getDeviceId());
-//        resultMap.put("msg","START_SLOT");
-//        resultMap.put("seq",1000);
-//        Map<String, Object> paraMap=new HashMap<>();
-//        paraMap.put("slotId",selectOrderModel.getSlotIndex());
-//        paraMap.put("serviceSeconds",10);
-//        paraMap.put("currentMa",100);
-//        resultMap.put("data", paraMap);
-//        JSONObject paraJson = JSONObject.fromObject(resultMap);
-//        logger.info("requeatparams=={}",paraJson.toString());
-//        logger.info("getDeviceId=={}",selectOrderModel.getDeviceId());
-//        for (int i=0;i<5;i++){
-//            String jsonvalues = HttpClient.doPost("http://47.104.144.249:19002",paraJson.toString());
-//            logger.debug("Device Gateway return = {}", jsonvalues);
-//            JSONObject json = JSONObject.fromObject(jsonvalues);
-//            JSONObject innerJson = json.getJSONObject("data");
-//            int status = innerJson.getInt("deviceReturnCode");
-//            if (status == 0){
-//                break;
-//            }
-//        }
-
     }
 
     /**
@@ -205,7 +166,7 @@ public class PayController {
     @RequestMapping(value = "/getPayStatus", method = {RequestMethod.POST})
     public Map<String, Object> getOrderStatus(HttpServletRequest request, HttpServletResponse response, @RequestBody PrepayModel prepayModel) {
         Map<String, Object> result = new HashMap<>();
-        SelectOrderModel selectOrderModel = selectOrderService.selectOrderModel(prepayModel.getOut_trade_no());
+        SelectOrderModel selectOrderModel = payService.selectOrderModel(prepayModel.getOut_trade_no());
         if (selectOrderModel.getStatus() == 0) {
             result.put("msg", "支付成功.");
             result.put("status", "0");
@@ -221,8 +182,54 @@ public class PayController {
         }
         }
 
-
-
+        //控制电桩，发送充电提醒
+    @RequestMapping(value = "/setOrderController", method = {RequestMethod.POST})
+    public void setOrderController(HttpServletRequest request, HttpServletResponse response, @RequestBody PrepayModel prepayModel) {
+        Map<String, Object> result = new HashMap<>();
+        Date day = new Date();
+        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        SelectOrderModel selectOrderModel = payService.selectOrderModel(prepayModel.getOut_trade_no());
+        ChargingInfoModel chargingInfoModel=payService.getpaylocation(selectOrderModel.getDeviceId());
+        SumPaymentModel sumPaymentModel=sumService.sumPaymentModel(selectOrderModel.getOpenId());
+        ChargingControllerUtil chargingControllerUtil=new ChargingControllerUtil();
+        chargingControllerUtil.chargingController(selectOrderModel.getDeviceId(),selectOrderModel.getSlotIndex(),selectOrderModel.getPayment());
+        chargingControllerUtil.sendMessage(selectOrderModel.getOpenId(),selectOrderModel.getDeviceId(),chargingInfoModel.getLocation(),selectOrderModel.getPayment(),sumPaymentModel.getPayment(),df.format(day));
+    }
+    @RequestMapping(value = "/wxPayRefund", method = { RequestMethod.POST })
+    public String qxwxsign(HttpServletResponse response, HttpServletRequest request, @RequestBody RefundModel refundmodel) throws IOException {
+        String param = WXPayUtils.wxPayRefund(refundmodel.getMerchantNumber(),String.valueOf(refundmodel.getTotalFee()*100));
+        logger.info("wxPayRefund param == {}",param);
+        String result = "";
+        String url = "https://api.mch.weixin.qq.com/secapi/pay/refund";
+        try {
+            result = WXPayUtils.wxPayBack(url, param);
+            logger.info("wxPayRefund result == {}",result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            logger.error("wxPayRefund error == {}",e.getMessage());
+        }
+        String tt = "2007072001201611180592733503";
+        Pattern p = Pattern.compile("\\.*(\\w{" + tt.length() + "})\\.*");
+        int st = result.indexOf("<refund_id>");
+        String res = "";
+        if (st >= 0) {
+            int en = result.indexOf("</refund_id>");
+            res = result.substring(st, en);
+            Matcher m = p.matcher(res);
+            if (m.find()) {
+                res = m.group(1);
+            }
+            if (res.length() > 0) {
+                result = "code:1,msg:退款成功";
+                logger.info("wxPayRefund  == code:1,msg:退款成功");
+            } else {
+                logger.info("wxPayRefund  == code:-1,msg:退款失败");
+                result = "code:-1,msg:退款失败";
+            }
+            response.getWriter().print(JSON.toJSON(result));
+        }
+        return null;
+    }
     }
 
 

@@ -106,19 +106,5 @@ public class PayUtils {
         params.put("sign",result);
         return params;
 
-//        // APP
-//        SortedMap<Object, Object> appReqParameters = new TreeMap<Object, Object>();
-//        String prepayId = params.get("prepay_id").toString();
-//        appReqParameters.put("appid", parameters.get("appid").toString());
-//        appReqParameters.put("noncestr", parameters.get("nonce_str").toString());
-//        appReqParameters.put("package", "Sign=WXPay");
-//        appReqParameters.put("partnerid", parameters.get("mch_id").toString());
-//        Long currentSeconds = System.currentTimeMillis() / 1000;
-//        appReqParameters.put("timestamp", String.valueOf(currentSeconds));
-//        appReqParameters.put("prepayid", prepayId);
-//        String newSign = WXPayUtils.createSign("UTF-8", appReqParameters, configDict.get("app_key"));
-//        appReqParameters.put("sign", newSign);
-//        String appRequestXML = WXPayUtils.getRequestXml(appReqParameters);
-//        return appRequestXML;
     }
 }

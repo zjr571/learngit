@@ -5,7 +5,7 @@ public class SelectOrderModel {
     private String packag;
     private String prepayId;
     private String deviceId;
-    private long payment;
+    private int payment;
     private String paytime;
     private int status;
     private int slotIndex;
@@ -26,11 +26,11 @@ public class SelectOrderModel {
         this.packag = packag;
     }
 
-    public long getPayment() {
+    public int getPayment() {
         return payment;
     }
 
-    public void setPayment(long payment) {
+    public void setPayment(int payment) {
         this.payment = payment;
     }
 

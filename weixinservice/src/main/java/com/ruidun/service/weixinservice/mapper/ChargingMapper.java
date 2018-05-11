@@ -43,17 +43,17 @@ public interface ChargingMapper {
     @Select("SELECT chargingsock_state.slotIndex,chargingsock_state.slotStatus,chargingsock_state.time,charging_info.location,charging_info.locationDetail,charging_info.lat,charging_info.lng FROM chargingsock_state,charging_info WHERE chargingsock_state.deviceId=charging_info.deviceId AND chargingsock_state.deviceId=#{deviceId}")
     List<LocationModel> getLocation(String deviceId);
 
-    @Select("SELECT chargingsock_state.slotIndex,chargingsock_state.deviceId,chargingsock_state.starttime,chargingsock_state.time,chargingsock_state.chargingTime,chargingsock_state.slotSN,charging_info.location,charging_info.locationDetail,charging_info.chargerIndex FROM chargingsock_state,charging_info WHERE chargingsock_state.deviceId=charging_info.deviceId AND chargingsock_state.deviceId=#{deviceId} AND chargingsock_state.slotIndex=#{slotId}")
+    @Select("SELECT chargingsock_state.slotIndex,chargingsock_state.deviceId,chargingsock_state.starttime,chargingsock_state.time,chargingsock_state.chargingTime,chargingsock_state.slotSN,chargingsock_state.totalTime,charging_info.location,charging_info.locationDetail,charging_info.chargerIndex FROM chargingsock_state,charging_info WHERE chargingsock_state.deviceId=charging_info.deviceId AND chargingsock_state.deviceId=#{deviceId} AND chargingsock_state.slotIndex=#{slotId}")
     NowChargingModel getnowcharging(String deviceId,int slotId);
 
     @Select("SELECT charging_info.locationId,charging_info.location,charging_info.locationDetail,charging_info.lat,charging_info.lng,charging_info.city,charging_state.usedCount,charging_state.availableCount FROM charging_info,charging_state WHERE charging_info.deviceId=charging_state.deviceId AND charging_info.location LIKE '%${_parameter}%'")
     List<SearchWordChargingModel> getsearchcharging(String _parameter);
 
-    @Select("SELECT chargingsock_state.slotIndex,chargingsock_state.deviceId,chargingsock_state.starttime,chargingsock_state.time,chargingsock_state.chargingTime,chargingsock_state.slotSN,charging_info.location,charging_info.locationDetail,charging_info.chargerIndex FROM chargingsock_state,charging_info,user_pay WHERE chargingsock_state.deviceId=charging_info.deviceId AND chargingsock_state.deviceId = user_pay.deviceId AND user_pay.slotIndex=chargingsock_state.slotIndex AND user_pay.userid=#{userid}")
-    MyChargingModel getmycharging(String userid);
+    @Select("SELECT chargingsock_state.slotIndex,chargingsock_state.deviceId,chargingsock_state.starttime,chargingsock_state.time,chargingsock_state.chargingTime,chargingsock_state.slotSN,chargingsock_state.totalTime,charging_info.location,charging_info.locationDetail,charging_info.chargerIndex FROM chargingsock_state,charging_info WHERE chargingsock_state.deviceId=charging_info.deviceId AND chargingsock_state.openId=#{openId}")
+    List <MyChargingModel> getmycharging(String userid);
 
-    @Select("SELECT chargingsock_state.deviceId,chargingsock_state.starttime,charging_info.location  FROM chargingsock_state,charging_info,user_pay WHERE chargingsock_state.deviceId=charging_info.deviceId AND chargingsock_state.deviceId = user_pay.deviceId AND user_pay.slotIndex=chargingsock_state.slotIndex AND user_pay.userid=#{userid}")
-    List<RecordChargingModel> getrecordcharging(String userid);
+    @Select("SELECT chargingsock_state.deviceId,charging_info.location,charging_info.chargerIndex,charging_order.status,charging_order.payment,charging_order.paytime,charging_order.slotIndex FROM chargingsock_state,charging_info,charging_order WHERE chargingsock_state.deviceId=charging_info.deviceId AND chargingsock_state.deviceId = charging_order.deviceId AND charging_order.slotIndex=chargingsock_state.slotIndex AND charging_order.openId=#{openId}")
+    List<RecordChargingModel> getrecordcharging(String openId);
 
     @Select("SELECT chargingsock_state.slotIndex,chargingsock_state.deviceId,chargingsock_state.slotSN,charging_info.location,charging_info.locationDetail,charging_info.chargerIndex FROM chargingsock_state,charging_info WHERE chargingsock_state.deviceId=charging_info.deviceId AND chargingsock_state.deviceId=#{deviceId} AND chargingsock_state.slotIndex=#{slotIndex}")
     PayChargingModel getpaycharging(String deviceId,int slotIndex);
@@ -67,5 +67,25 @@ public interface ChargingMapper {
     @Select("SELECT charging_order.openId,charging_order.status,charging_order.deviceId,charging_order.slotIndex,charging_order.payment,charging_order.paytime FROM charging_order WHERE charging_order.out_trade_no=#{out_trade_no}")
     SelectOrderModel selectorder(String out_trade_no);
 
+    @Select("INSERT into user_charging (userid,deviceId) values (#{userid},#{deviceId})")
+    void insertUserCollection(@Param("userid") String userid,@Param("deviceId") String deviceId);
+
+    @Select("SELECT count(1) AS count from user_charging WHERE user_charging.userid=#{userid} AND user_charging.deviceId=#{deviceId}")
+    CountModel countUserCharging(@Param("userid") String userid,@Param("deviceId") String deviceId);
+
+    @Select("UPDATE charging_state SET usedCount = #{usedCount},availableCount=#{availableCount},use_state=#{use_state} WHERE deviceId = #{deviceId}")
+    void updateChargingState (@Param("usedCount") int usedCount,@Param("availableCount") int availableCount,@Param("use_state") String use_state,@Param("deviceId") String deviceId);
+
+    @Select("UPDATE chargingsock_state SET slotStatus = #{slotStatus},starttime=#{starttime},time=#{time},chargingTime=#{chargingTime},totalTime=#{totalTime},openId=#{openId},out_trade_no=#{out_trade_no} WHERE deviceId = #{deviceId} AND slotIndex=#{slotIndex}")
+    void updateChargingsockstate (@Param("slotStatus") int slotStatus,@Param("starttime") String starttime,@Param("time") String time,@Param("chargingTime") String chargingTime,@Param("totalTime") int totalTime,@Param("openId") String openId,@Param("out_trade_no") String out_trade_no,@Param("deviceId") String deviceId,@Param("slotIndex") int slotIndex);
+
+    @Select("SELECT chargingsock_state.deviceId,chargingsock_state.slotIndex,chargingsock_state.slotStatus,chargingsock_state.starttime,chargingsock_state.totalTime,chargingsock_state.openId,chargingsock_state.out_trade_no FROM chargingsock_state WHERE chargingsock_state.deviceId=#{deviceId}")
+    List<ChargingSockModel> getchargingsockstate(String deviceId);
+
+    @Select("SELECT chargingsock_state.deviceId,chargingsock_state.slotIndex,chargingsock_state.slotStatus,chargingsock_state.starttime,chargingsock_state.totalTime,chargingsock_state.openId,chargingsock_state.out_trade_no FROM chargingsock_state WHERE chargingsock_state.deviceId=#{deviceId} AND chargingsock_state.slotIndex=#{slotIndex}")
+    ChargingSockModel getchargingsockstateone(String deviceId,int slotIndex);
+
+    @Select("UPDATE chargingsock_state SET starttime=#{starttime},time=#{time},chargingTime=#{chargingTime} WHERE deviceId = #{deviceId} AND slotIndex=#{slotIndex}")
+    void updateChargingsockTime (@Param("starttime") String starttime,@Param("time") String time,@Param("chargingTime") String chargingTime,@Param("deviceId") String deviceId,@Param("slotIndex") int slotIndex);
 
 }
