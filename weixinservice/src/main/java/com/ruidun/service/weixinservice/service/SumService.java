@@ -11,14 +11,7 @@ public class SumService {
     @Autowired
     ChargingMapper chargingMapper;
 
-    public SumUsedCountModel sumUsedCountService(int locationId) {
 
-        return chargingMapper.getsumusedcount(locationId);
-    }
-
-    public SumAvailableCountModel sumAvailableCountModel(int locationId) {
-        return chargingMapper.getsumavailablecount(locationId);
-    }
 
     public SumPaymentModel sumPaymentModel(String openId){
 

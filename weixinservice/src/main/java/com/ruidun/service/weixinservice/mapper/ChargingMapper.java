@@ -16,23 +16,18 @@ public interface ChargingMapper {
     @Select("SELECT charging_city.city,charging_city.province FROM charging_city")
     List<CityModel> getCity();
 
-    @Select("SELECT SUM(charging_state.usedCount) FROM charging_state WHERE charging_state.locationId=#{locationId}")
-    SumUsedCountModel getsumusedcount(int locatinId);
-
-    @Select("SELECT SUM(charging_state.availableCount) FROM charging_state WHERE charging_state.locationId=#{locationId}")
-    SumAvailableCountModel getsumavailablecount(int locatinId);
 
     @Select("SELECT SUM(charging_order.payment) AS payment FROM charging_order WHERE charging_order.openId=#{openId} AND charging_order.status=0")
     SumPaymentModel getsumPaymentcount(String openId);
 
-    @Select("SELECT charging_info.locationId,charging_info.location,charging_info.locationDetail,charging_info.lat,charging_info.lng,charging_state.usedCount,charging_state.availableCount FROM charging_info,charging_state WHERE charging_info.deviceId=charging_state.deviceId")
-    List<NearChargingModel> getnearcharging();
+    @Select("SELECT A.locationId,A.location,A.locationDetail,A.lat,A.lng,B.usedCount,B.availableCount  FROM (SELECT  DISTINCT charging_info.locationId,charging_info.location,charging_info.locationDetail,charging_info.lat,charging_info.lng FROM charging_info) A  inner join (SELECT locationId, SUM(charging_state.usedCount) AS usedCount , SUM(charging_state.availableCount) AS availableCount  FROM charging_state GROUP BY locationId) B ON A.locationId=B.locationId LIMIT ${_parameter1},${_parameter2} ")
+    List<NearChargingModel> getnearcharger(int _parameter1, int _parameter2);
 
     @Select("SELECT charging_info.location FROM charging_info WHERE charging_info.deviceId=#{deviceId}")
     ChargingInfoModel getpaylocation(String deviceId);
 
-    @Select("SELECT  charging_info.chargerIndex,charging_info.lat,charging_info.lng,charging_info.locationId,charging_info.deviceId,charging_info.location,charging_info.locationDetail,charging_state.usedCount,charging_state.availableCount FROM charging_info,charging_state WHERE charging_info.deviceId=charging_state.deviceId AND charging_info.locationId=#{locationId}")
-    List<ChargingModel> getcharging(String locationId);
+    @Select("SELECT A.location,A.locationDetail,A.lat,A.lng,B.usedCountTotal,B.availableCountTotal  FROM (SELECT  DISTINCT charging_info.locationId,charging_info.location,charging_info.locationDetail,charging_info.lat,charging_info.lng FROM charging_info) A inner join (SELECT locationId, SUM(charging_state.usedCount) AS usedCountTotal , SUM(charging_state.availableCount) AS availableCountTotal  FROM charging_state GROUP BY locationId) B ON A.locationId=B.locationId WHERE A.locationId=#{locationId}")
+    ChargingModel getcharging(String locationId);
 
     @Select("SELECT charging_info.chargerIndex,charging_info.locationId,charging_info.deviceId,charging_info.location,charging_info.locationDetail,charging_state.usedCount,charging_state.availableCount FROM charging_info,charging_state WHERE charging_info.deviceId=charging_state.deviceId AND charging_info.locationId=#{locationId}")
     List<ChargingContentModel> getchargingcontent(String locationId);
@@ -49,7 +44,7 @@ public interface ChargingMapper {
     @Select("SELECT chargingsock_state.slotIndex,chargingsock_state.deviceId,chargingsock_state.starttime,chargingsock_state.time,chargingsock_state.chargingTime,chargingsock_state.slotSN,chargingsock_state.totalTime,charging_info.location,charging_info.locationDetail,charging_info.chargerIndex FROM chargingsock_state,charging_info WHERE chargingsock_state.deviceId=charging_info.deviceId AND chargingsock_state.deviceId=#{deviceId} AND chargingsock_state.slotIndex=#{slotId}")
     NowChargingModel getnowcharging(String deviceId,int slotId);
 
-    @Select("SELECT charging_info.locationId,charging_info.location,charging_info.locationDetail,charging_info.lat,charging_info.lng,charging_info.city,charging_state.usedCount,charging_state.availableCount FROM charging_info,charging_state WHERE charging_info.deviceId=charging_state.deviceId AND charging_info.location LIKE '%${_parameter}%'")
+    @Select("SELECT A.locationId,A.location,A.locationDetail,A.lat,A.lng,A.city,B.usedCount,B.availableCount FROM (SELECT  DISTINCT charging_info.locationId,charging_info.location,charging_info.locationDetail,charging_info.lat,charging_info.lng,charging_info.city FROM charging_info) A inner join (SELECT locationId, SUM(charging_state.usedCount) AS usedCount , SUM(charging_state.availableCount) AS availableCount  FROM charging_state GROUP BY locationId) B ON A.locationId=B.locationId WHERE A.location LIKE '%${_parameter}%'")
     List<SearchWordChargingModel> getsearchcharging(String _parameter);
 
     @Select("SELECT chargingsock_state.slotIndex,chargingsock_state.deviceId,chargingsock_state.starttime,chargingsock_state.time,chargingsock_state.chargingTime,chargingsock_state.slotSN,chargingsock_state.totalTime,charging_info.location,charging_info.locationDetail,charging_info.chargerIndex FROM chargingsock_state,charging_info WHERE chargingsock_state.deviceId=charging_info.deviceId AND chargingsock_state.openId=#{openId}")

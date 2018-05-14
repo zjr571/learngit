@@ -16,6 +16,7 @@ import com.ruidun.service.weixinservice.service.UpdateService;
 import com.ruidun.service.weixinservice.service.UserService;
 
 import com.ruidun.service.weixinservice.utils.AccessTokenUtil;
+import com.ruidun.service.weixinservice.utils.ChargingControllerUtil;
 import com.ruidun.service.weixinservice.utils.HttpClient;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
@@ -128,50 +129,10 @@ public class ReceiveController {
                     if (eventType == 99){
 
                     }else if (eventType == 101){
-                        Map<String, Object> templateMap=new HashMap<>();
-                        templateMap.put("touser",chargingSockstateModel.getOpenId());
-                        templateMap.put("template_id", WeiXinConstants.TEMPLATE_ID);
-                        Map<String, Object> dataMap=new HashMap<>();
-                        Map<String, Object> firstMap=new HashMap<>();
-                        Map<String, Object> keyword1Map=new HashMap<>();
-                        Map<String, Object> keyword2Map=new HashMap<>();
-                        Map<String, Object> keyword3Map=new HashMap<>();
-                        Map<String, Object> keyword4Map=new HashMap<>();
-                        Map<String, Object> keyword5Map=new HashMap<>();
-                        Map<String, Object> remarkMap=new HashMap<>();
-                        firstMap.put("value","断电提醒");
-                        firstMap.put("color","#173177");
-                        dataMap.put("first",firstMap);
-                        keyword1Map.put("value",deviceId);
-                        keyword1Map.put("color","#173177");
-                        dataMap.put("keyword1",keyword1Map);
-                        keyword2Map.put("value",locationModelList.get(0).getLocation());
-                        keyword2Map.put("color","#173177");
-                        dataMap.put("keyword2",keyword2Map);
-                        keyword3Map.put("value",chargingSockstateModel.getTotalTime());
-                        keyword3Map.put("color","#173177");
-                        dataMap.put("keyword3",keyword3Map);
-                        keyword4Map.put("value",chargingSockstateModel.getTotalTime());
-                        keyword4Map.put("color","#173177");
                         Date day = new Date();
                         SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                        dataMap.put("keyword4",keyword4Map);
-                        keyword5Map.put("value",df.format(day));
-                        keyword5Map.put("color","#173177");
-                        dataMap.put("keyword5",keyword5Map);
-                        remarkMap.put("value","感谢您使用【小太阳】充电桩！");
-                        remarkMap.put("color","#173177");
-                        dataMap.put("remark",remarkMap);
-                        templateMap.put("data",dataMap);
-                        JSONObject templateJson = JSONObject.fromObject(templateMap);
-                        Map map=  AccessTokenUtil.getInstance().getAccessTokenAndJsapiTicket();
-                        String templatejsonvalues = HttpClient.doPost("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token="+map.get("access_token"),templateJson.toString());
-                        JSONObject resulttemplatejson = JSONObject.fromObject(templatejsonvalues);
-                        if (resulttemplatejson.getInt("errcode")==0){
-                            logger.info("template=={}","创建模板成功!!!");
-                        }else {
-                            logger.error("error template=={}",resulttemplatejson.getString("errmsg"));
-                        }
+                        ChargingControllerUtil chargingControllerUtil = new ChargingControllerUtil();
+                        chargingControllerUtil.sendMessage("断电提醒",chargingSockstateModel.getOpenId(),deviceId,slotId,locationModelList.get(0).getLocation(),Integer.valueOf(chargingSockstateModel.getTotalTime())/4 ,Integer.valueOf(chargingSockstateModel.getTotalTime())/4,df.format(day));
 
                         Map<String, Object> payRefundMap=new HashMap<>();
                         payRefundMap.put("merchantNumber",chargingSockstateModel.getOut_trade_no());

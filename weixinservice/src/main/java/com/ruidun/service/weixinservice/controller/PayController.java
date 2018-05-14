@@ -150,7 +150,7 @@ public class PayController {
                         //控制电桩设备开始充电
                         chargingControllerUtil.chargingController(selectOrderModel.getDeviceId(),selectOrderModel.getSlotIndex(),selectOrderModel.getPayment());
                         //发送开始充电提醒
-                        chargingControllerUtil.sendMessage(selectOrderModel.getOpenId(),selectOrderModel.getDeviceId(),chargingInfoModel.getLocation(),selectOrderModel.getPayment(),sumPaymentModel.getPayment(),df.format(day));
+                        chargingControllerUtil.sendMessage("充电开始提醒",selectOrderModel.getOpenId(),selectOrderModel.getDeviceId(),selectOrderModel.getSlotIndex(),chargingInfoModel.getLocation(),selectOrderModel.getPayment(),sumPaymentModel.getPayment(),df.format(day));
                     }else {
                         return XMLParser.setXML("SUCCESS", "OK");
                     }

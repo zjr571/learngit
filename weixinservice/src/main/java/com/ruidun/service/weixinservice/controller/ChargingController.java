@@ -34,47 +34,24 @@ public class ChargingController {
 
 
     @RequestMapping(value ="/getnearcharging",method = { RequestMethod.POST})
-    public ResponseEntity<JsonResult> getNearCharging (@RequestBody NearChargingBodyModel nearChargingBodyModel){
+    public ResponseEntity<JsonResult> getNearCharging (HttpServletRequest request, HttpServletResponse response,@RequestBody NearChargingBodyModel nearChargingBodyModel){
+
         JsonResult jsonResult = new JsonResult();
         NearChargingJsonResult nearChargingJsonResult = new NearChargingJsonResult();
-        final int n;
         try {
-            List<NearChargingModel> nearChargingModelList = chargingService.selectNearChargingInfo();
-            List<MarkModel> markModelList=chargingService.selectMark();
-            List<NearChargingModel> nearChargingModes = new ArrayList<>();
-                for (int j = 0;j< markModelList.size();j++){
-                    MarkModel markModel = markModelList.get(j);
-                    int usedCount = 0;
-                    int availableCount = 0;
-                    boolean falg = true;
-                    for (int i = 0;i< nearChargingModelList.size();i++){
-                        NearChargingModel nearChargingModel = nearChargingModelList.get(i);
-                    if (markModel.getLocationId()==(nearChargingModel.getLocationId())){
-                        usedCount = usedCount+nearChargingModel.getUsedCount();
-                        availableCount=availableCount+nearChargingModel.getAvailableCount();
-                        if (falg==false){
-                            nearChargingModelList.remove(i);
-                            i--;
-                        }
-                        falg=false;
-                    }
-                }
-                NearChargingModel nearChargingModel = nearChargingModelList.get(j);
+
+            List<NearChargingModel> nearChargingModelList = chargingService.selectNearChargingInfo((nearChargingBodyModel.getPageindex()-1)*nearChargingBodyModel.getPagesize(),(nearChargingBodyModel.getPageindex()-1)*nearChargingBodyModel.getPagesize()+nearChargingBodyModel.getPagesize());
+            List<NearChargingModel>nearChargingModels=new ArrayList<>();
+            for (NearChargingModel nearChargingModel: nearChargingModelList){
                 if (nearChargingBodyModel.getLat()==0||nearChargingBodyModel.getLng()==0){
                     nearChargingModel.setDistance(-1);
                 }else {
                     double distance = getDistance(nearChargingBodyModel.getLat(),nearChargingBodyModel.getLng(),nearChargingModel.getLat(),nearChargingModel.getLng());
                     nearChargingModel.setDistance(distance);
-                    nearChargingModel.setUsedCount(usedCount);
-                    nearChargingModel.setAvailableCount(availableCount);
                 }
             }
-            for (int i=(nearChargingBodyModel.getPageindex()-1)*nearChargingBodyModel.getPagesize();i<(nearChargingBodyModel.getPageindex()-1)*nearChargingBodyModel.getPagesize()+nearChargingBodyModel.getPagesize();i++){
-                if (i<nearChargingModelList.size()){
-                    nearChargingModes.add(nearChargingModelList.get(i));
-                }
-            }
-            Collections.sort(nearChargingModes, new Comparator<NearChargingModel>() {
+
+            Collections.sort(nearChargingModels, new Comparator<NearChargingModel>() {
                 @Override
                 public int compare(NearChargingModel o1, NearChargingModel o2) {
                     double temp = o1.getDistance()-o2.getDistance();
@@ -91,7 +68,7 @@ public class ChargingController {
             jsonResult.setMsg("请求成功");
             nearChargingJsonResult.setPageIndex(nearChargingBodyModel.getPageindex());
             nearChargingJsonResult.setPageSize(nearChargingBodyModel.getPagesize());
-            nearChargingJsonResult.setContent(nearChargingModes);
+            nearChargingJsonResult.setContent(nearChargingModelList);
             jsonResult.setData(nearChargingJsonResult);
         } catch (Exception e) {
             logger.error("Failed to get nearchargers. Error = {}", e.getMessage());
@@ -133,36 +110,29 @@ public class ChargingController {
         ChargingJsonResult chargingJsonResult = new ChargingJsonResult();
         ChargingContentJsonResult chargingContentJsonResult = new ChargingContentJsonResult();
         try {
-            int usedCount = 0;
-            int availableCount = 0;
             String location = null;
             String locationDetail = null;
             double lat = 0;
             double lng = 0;
             double distance = 0;
-            List<ChargingModel> chargingModelList = chargingService.selectCharging(chargingBodyModel.getLocationId());
+            logger.info("body lat,lng==={},{}",chargingBodyModel.getLat(),chargingBodyModel.getLng());
+            ChargingModel chargingModel = chargingService.selectCharging(chargingBodyModel.getLocationId());
             List<ChargingContentModel> chargingContentModels = chargingService.selectContenCharging(chargingBodyModel.getLocationId());
-            for (int i = 0;i< chargingModelList.size();i++){
-                ChargingModel chargingModel = chargingModelList.get(i);
-                usedCount = usedCount+chargingModel.getUsedCount();
-                availableCount = availableCount+chargingModel.getAvailableCount();
-                if (i==0){
-                    if (chargingBodyModel.getLat()==0||chargingBodyModel.getLng()==0){
+            if (chargingBodyModel.getLat()==0||chargingBodyModel.getLng()==0){
                         distance = -1;
-                    }else {
+            }else {
                         location = chargingModel.getLocation();
                         locationDetail = chargingModel.getLocationDetail();
                         lat = chargingModel.getLat();
                         lng = chargingModel.getLng();
                         distance = getDistance(chargingBodyModel.getLat(),chargingBodyModel.getLng(),lat,lng);
-                    }
-
-                }
+                        logger.info("lat,lng,distance==={},{},{}",lat,lng,distance);
             }
+
             chargingJsonResult.setStatus(0);
             chargingJsonResult.setMsg("请求成功");
-            chargingContentJsonResult.setAvailableCountTotal(availableCount);
-            chargingContentJsonResult.setUsedCountTotal(usedCount);
+            chargingContentJsonResult.setAvailableCountTotal(chargingModel.getAvailableCountTotal());
+            chargingContentJsonResult.setUsedCountTotal(chargingModel.getUsedCountTotal());
             chargingContentJsonResult.setLocation(location);
             chargingContentJsonResult.setLocationDetail(locationDetail);
             chargingContentJsonResult.setLat(lat);
@@ -289,42 +259,20 @@ public class ChargingController {
             String searchword = URLDecoder.decode(searchWordChargingBodyModel.getSearchWord(), "utf-8");
             logger.info("searchword == {}",cityStr);
             List<SearchWordChargingModel> searchWordChargingModelList = chargingService.selectSearchWordCharging(searchword);
-            List<MarkModel> markModelList=chargingService.selectMark();
-            for (int j = 0;j<markModelList.size();j++){
-                MarkModel markModel=markModelList.get(j);
-                int usedCount = 0;
-                int availableCount = 0;
-                boolean falg = true;
-                for (int i=0;i<searchWordChargingModelList.size();i++){
-                    SearchWordChargingModel searchWordChargingModel=searchWordChargingModelList.get(i);
-                    if (markModel.getLocationId()==(searchWordChargingModel.getLocationId())){
-                        usedCount=usedCount+searchWordChargingModel.getUsedCount();
-                        availableCount=availableCount+searchWordChargingModel.getAvailableCount();
-                        if (falg == false){
-                            searchWordChargingModelList.remove(i);
-                            i--;
-                        }
-                        falg = false;
-                    }
-                }
-                if (falg == true) {
-                    markModelList.remove(j);
-                    j--;
+
+            for (int i = 0; i < searchWordChargingModelList.size(); i++) {
+                SearchWordChargingModel searchWordChargingModel = searchWordChargingModelList.get(i);
+                if (searchWordChargingBodyModel.getLat() == 0 || searchWordChargingBodyModel.getLng() == 0) {
+                    searchWordChargingModel.setDistance(-1);
                 } else {
-                    SearchWordChargingModel searchWordChargingModel = searchWordChargingModelList.get(j);
                     double distance = getDistance(searchWordChargingBodyModel.getLat(), searchWordChargingBodyModel.getLng(), searchWordChargingModel.getLat(), searchWordChargingModel.getLng());
                     searchWordChargingModel.setDistance(distance);
-                    searchWordChargingModel.setUsedCount(usedCount);
-                    searchWordChargingModel.setAvailableCount(availableCount);
+                }
+                if (!searchWordChargingModel.getCity().equals(cityStr)) {
+                    searchWordChargingModelList.remove(searchWordChargingModel);
+                    i--;
                 }
             }
-                for (int i = 0; i < searchWordChargingModelList.size(); i++) {
-                    SearchWordChargingModel searchWordChargingModel = searchWordChargingModelList.get(i);
-                    if (!searchWordChargingModel.getCity().equals(cityStr)) {
-                        searchWordChargingModelList.remove(searchWordChargingModel);
-                        i--;
-                    }
-                }
 
             Collections.sort(searchWordChargingModelList, new Comparator<SearchWordChargingModel>() {
                 @Override
@@ -503,15 +451,9 @@ public class ChargingController {
         JSONObject jsonObject = JSONObject.fromObject(result);
         String openid = jsonObject.get("openid").toString();
         logger.info("openid Report status. {}", openid);
-        Map<String, Object> ret = new HashMap<>();
-        ret.put("status", 0);
-        ret.put("msg","获取openid成功");
-        ret.put("openId",openid);
-        JSONObject json = JSONObject.fromObject(ret);
-        PrintWriter out = response.getWriter();
-        out.print(json);
-        out.flush();
-        out.close();
+        String url = WeiXinConstants.REQUEST_URL+"dist/page/charge.html?openid="+openid;
+        response.setStatus(301);
+        response.sendRedirect(url);
     }
 
     @RequestMapping(value = "/verify", method = { RequestMethod.GET})

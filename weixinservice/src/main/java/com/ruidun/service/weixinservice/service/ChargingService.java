@@ -16,7 +16,7 @@ public class ChargingService {
         return chargingMapper.getCity();
     }
     //获取电桩信息
-    public List<ChargingModel> selectCharging(String mark) {
+    public ChargingModel selectCharging(String mark) {
         return chargingMapper.getcharging(mark);
     }
     //根据mark标识下的电桩信息
@@ -43,9 +43,9 @@ public class ChargingService {
         return chargingMapper.getmycharging(userid);
     }
     //获取附近电桩
-    public List<NearChargingModel> selectNearChargingInfo() {
+    public List<NearChargingModel> selectNearChargingInfo(int pageIndex,int pageSize) {
 
-        return chargingMapper.getnearcharging();
+        return chargingMapper.getnearcharger(pageIndex,pageSize);
     }
     //获取正在充电的插座的状态
     public NowChargingModel selectNowCharging(String deviceid,int slotId) {

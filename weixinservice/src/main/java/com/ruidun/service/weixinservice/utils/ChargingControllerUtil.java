@@ -25,7 +25,7 @@ public class ChargingControllerUtil {
         Map<String, Object> paraMap=new HashMap<>();
         paraMap.put("slotId",slotIndex);
         paraMap.put("serviceSeconds",36000);
-        paraMap.put("currentMa",100);
+        paraMap.put("currentMa",1000);
         resultMap.put("data", paraMap);
         JSONObject paraJson = JSONObject.fromObject(resultMap);
         logger.info("requeatparams=={}",paraJson.toString());
@@ -42,11 +42,11 @@ public class ChargingControllerUtil {
         }
     }
 
-    public void sendMessage(String openId,String deviceId,String location,int payment,int totalPayment,String time){
+    public void sendMessage(String values, String openId,String deviceId,int slotIndex,String location,int payment,int totalPayment,String time){
         Map<String, Object> templateMap=new HashMap<>();
         templateMap.put("touser",openId);
         templateMap.put("template_id", WeiXinConstants.TEMPLATE_ID);
-        templateMap.put("url",WeiXinConstants.REQUEST_URL+"dist/page/progress.html");
+        templateMap.put("url",WeiXinConstants.REQUEST_URL+"dist/page/progress.html?deviceId="+deviceId+"&slotIndex="+slotIndex);
         Map<String, Object> dataMap=new HashMap<>();
         Map<String, Object> firstMap=new HashMap<>();
         Map<String, Object> keyword1Map=new HashMap<>();
@@ -55,8 +55,8 @@ public class ChargingControllerUtil {
         Map<String, Object> keyword4Map=new HashMap<>();
         Map<String, Object> keyword5Map=new HashMap<>();
         Map<String, Object> remarkMap=new HashMap<>();
-        firstMap.put("value","充电开始提醒");
-        firstMap.put("color","#173177");
+        firstMap.put("value",values);
+        firstMap.put("color","#FF0000");
         dataMap.put("first",firstMap);
         keyword1Map.put("value",deviceId);
         keyword1Map.put("color","#173177");
@@ -74,7 +74,7 @@ public class ChargingControllerUtil {
         keyword5Map.put("color","#173177");
         dataMap.put("keyword5",keyword5Map);
         remarkMap.put("value","感谢您使用【小太阳】充电桩！");
-        remarkMap.put("color","#173177");
+        remarkMap.put("color","#FF0000");
         dataMap.put("remark",remarkMap);
         templateMap.put("data",dataMap);
         JSONObject templateJson = JSONObject.fromObject(templateMap);
